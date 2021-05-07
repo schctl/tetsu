@@ -1,0 +1,122 @@
+//! Tools to encrypt packet data sent over the network.
+
+use rand::Rng;
+
+use openssl::encrypt::Encrypter;
+use openssl::pkey::{PKey, Public};
+use openssl::rsa::{Padding, Rsa};
+pub use openssl::sha::Sha1;
+
+use aes::Aes128;
+use cfb8::{
+    cipher::{AsyncStreamCipher, NewCipher},
+    Cfb8,
+};
+
+pub type PublicKey = PKey<Public>;
+
+/// Fills `key` with random bytes.
+#[inline]
+pub fn generate_key(key: &mut [u8]) {
+    rand::thread_rng().fill(key);
+}
+
+/// Return a PublicKey object from a DER encoded RSA key.
+#[inline]
+pub fn pkey_from_der(key: &[u8]) -> PublicKey {
+    let rsa_key = Rsa::public_key_from_der(key).unwrap();
+    PKey::from_rsa(rsa_key).unwrap()
+}
+
+/// Encrypt some data with an RSA public key.
+pub struct RsaEncrypter<'a> {
+    /// Internal RSA encryptor.
+    encrypter: Encrypter<'a>,
+}
+
+impl<'a> RsaEncrypter<'a> {
+    /// Returns a new RSA encryptor from a Public key.
+    #[inline]
+    pub fn new(key: &'a PublicKey) -> Self {
+        let mut encrypter = Encrypter::new(&key).unwrap();
+        encrypter.set_rsa_padding(Padding::PKCS1).unwrap();
+        Self { encrypter }
+    }
+
+    /// Encrypt a buffer with an RSA encryptor.
+    pub fn encrypt(&self, buf: &[u8]) -> Vec<u8> {
+        // Create an output buffer
+        let _buffer_len = self.encrypter.encrypt_len(&buf).unwrap();
+        let mut encrypted_buf = vec![0; _buffer_len];
+        // Encrypt and truncate the buffer
+        let _encrypted_len = self.encrypter.encrypt(&buf, &mut encrypted_buf).unwrap();
+        encrypted_buf.truncate(_encrypted_len);
+        encrypted_buf
+    }
+}
+
+/// Default Minecraft stream cipher. Uses AES/CFB8.
+pub struct DefaultStreamCipher<const KEY_LEN: usize> {
+    /// Internal CFB8 cipher.
+    cipher: Cfb8<Aes128>,
+}
+
+impl<const KEY_LEN: usize> DefaultStreamCipher<KEY_LEN> {
+    /// Constructs a new stream cipher
+    #[inline]
+    pub fn new(key: [u8; KEY_LEN]) -> Self {
+        Self {
+            cipher: Cfb8::new_from_slices(&(key), &(key)).unwrap(),
+        }
+    }
+
+    /// Decrypt data using the internal cipher.
+    #[inline]
+    pub fn decrypt(&mut self, data: &mut [u8]) {
+        self.cipher.decrypt(data)
+    }
+
+    /// Encrypt data using the internal cipher.
+    #[inline]
+    pub fn encrypt(&mut self, data: &mut [u8]) {
+        self.cipher.encrypt(data)
+    }
+}
+
+/// Return a string of hex characters of a Sha1 hash.
+/// Based on Minecraft's implementation:
+/// From https://wiki.vg/Protocol_Encryption#Authentication:
+/// > Note that the Sha1.hexdigest() method used by minecraft is non standard.
+/// > It doesn't match the digest method found in most programming languages
+/// > and libraries. It works by treating the sha1 output bytes as one large
+/// > integer in two's complement and then printing the integer in base 16,
+/// > placing a minus sign if the interpreted number is negative.
+pub fn hexdigest(hasher: Sha1) -> String {
+    let mut hash = hasher.finish();
+
+    let negative = (hash[0] & 0x80) == 0x80;
+
+    // Treat hash as a numer and calculate 2's complement
+    if negative {
+        let mut carry = true;
+        for i in (0..hash.len()).rev() {
+            hash[i] = !hash[i];
+            if carry {
+                carry = hash[i] == 0xFF;
+                hash[i] = hash[i].wrapping_add(1);
+            }
+        }
+    }
+
+    let hash_str = hash
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect::<Vec<String>>()
+        .join("");
+
+    if negative {
+        "-".to_owned() + hash_str.trim_matches('0')
+    } else {
+        hash_str.trim_matches('0').to_owned()
+    }
+}

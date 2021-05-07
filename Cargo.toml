@@ -1,0 +1,36 @@
+[package]
+name = "tetsu"
+version = "0.0.1-alpha.0"
+authors = ["Sachin Cherian <sachinctl@protonmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+path = "src/lib.rs"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
+[dependencies]
+# Crypto
+aes = "^0.7"
+cfb8 = "^0.7"
+rand = "^0.8"
+openssl = "^0.10"
+
+# Misc
+ureq = "^2.1"
+flate2 = "^1.0"
+colorful = "0.2.1"
+
+# Serialization
+uuid = { version = "^0.8", default-features = false }
+byteorder = "^1.4"
+hematite-nbt = "^0.5"
+
+serde = { version = "1.0", features = ["derive"] }
+serde_repr = "^0.1"
+serde_json = "^1.0"
