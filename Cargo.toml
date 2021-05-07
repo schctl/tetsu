@@ -1,6 +1,10 @@
 [package]
 name = "tetsu"
+license = "MIT"
+readme = "README.md"
 version = "0.0.1-alpha.0"
+description = "A prototype interface to Minecraft's server protocol."
+repository = "https://github.com/schctl/tetsu/"
 authors = ["Sachin Cherian <sachinctl@protonmail.com>"]
 edition = "2018"
 
