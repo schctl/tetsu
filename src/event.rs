@@ -36,6 +36,11 @@ pub enum Event {
     EncryptionResponse(EncryptionResponse),
     LoginSuccess(LoginSuccess),
     SetCompression(SetCompression),
+
+    KeepAlive(KeepAlive),
+    JoinGame(JoinGame),
+    PluginMessage(PluginMessage),
+    ServerDifficultyUpdate(ServerDifficultyUpdate)
 }
 
 impl Event {
@@ -96,31 +101,54 @@ impl Event {
 
 // Other types --------------------------
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq)]
+pub enum Gamemode {
+    Survival,
+    Creative,
+    Adventure,
+    Spectator,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Dimension {
+    Nether,
+    Overworld,
+    End,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Difficulty {
+    Peaceful,
+    Easy,
+    Normal,
+    Hard,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum ServerDescription {
     Short(String),
     Long(ServerDescriptionLong),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ServerDescriptionLong {
     pub text: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ServerPlayers {
     pub max: u32,
     pub online: u16,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ServerVersion {
     pub name: String,
     pub protocol: ProtocolVersion,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ServerInformation {
     pub description: ServerDescription,
     pub players: ServerPlayers,
@@ -200,4 +228,33 @@ pub struct SetCompression {
     pub threshold: i32,
 }
 
-// All possible server events -----------
+// Login -----------
+
+#[derive(Debug)]
+pub struct KeepAlive {
+    pub id: i64,
+}
+
+#[derive(Debug)]
+pub struct JoinGame {
+    pub id: i32,
+    pub gamemode: Gamemode,
+    pub is_hardcore: bool,
+    pub dimension: Dimension,
+    pub difficulty: Difficulty,
+    pub max_players: u32,
+    pub world_type: String,
+    pub reduced_debug: bool,
+}
+
+#[derive(Debug)]
+pub struct PluginMessage {
+    pub channel: String,
+    pub data: Vec<u8>
+}
+
+#[derive(Debug)]
+pub struct ServerDifficultyUpdate {
+    pub difficulty: Difficulty,
+    pub difficulty_locked: bool
+}

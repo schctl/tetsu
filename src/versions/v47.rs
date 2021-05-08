@@ -6,6 +6,65 @@ use crate::packet::*;
 
 use uuid::Uuid;
 
+// Conversions ---
+
+pub fn byte_to_gamemode(byte: UnsignedByte) -> Gamemode {
+    match byte {
+        0 => Gamemode::Survival,
+        1 => Gamemode::Creative,
+        2 => Gamemode::Adventure,
+        3 => Gamemode::Spectator,
+        _ => panic!("Unknown packet"),
+    }
+}
+
+pub fn gamemode_to_byte(gamemode: &Gamemode) -> UnsignedByte {
+    match gamemode {
+        Gamemode::Survival => 0,
+        Gamemode::Creative => 1,
+        Gamemode::Adventure => 2,
+        Gamemode::Spectator => 3,
+    }
+}
+
+pub fn byte_to_dimension(byte: Byte) -> Dimension {
+    match byte {
+        -1 => Dimension::Nether,
+        0 => Dimension::Overworld,
+        1 => Dimension::End,
+        _ => panic!("Unknown packet"),
+    }
+}
+
+pub fn dimension_to_byte(dimension: &Dimension) -> Byte {
+    match dimension {
+        Dimension::Nether => -1,
+        Dimension::Overworld => 0,
+        Dimension::End => 1,
+    }
+}
+
+pub fn byte_to_difficulty(byte: UnsignedByte) -> Difficulty {
+    match byte {
+        0 => Difficulty::Peaceful,
+        1 => Difficulty::Easy,
+        2 => Difficulty::Normal,
+        3 => Difficulty::Hard,
+        _ => panic!("Unknown packet"),
+    }
+}
+
+pub fn difficulty_to_byte(difficulty: &Difficulty) -> UnsignedByte {
+    match difficulty {
+        Difficulty::Peaceful => 0,
+        Difficulty::Easy => 1,
+        Difficulty::Normal => 2,
+        Difficulty::Hard => 3,
+    }
+}
+
+// ---------------
+
 packet_impl! {
 
     inherit {
@@ -288,5 +347,112 @@ packet_impl! {
     }
 
     // Play --------------------
+
+    (0x00) ClientBound Play KeepAlivePacket: KeepAlive {
+        from_event {
+            | origin: KeepAlive | -> KeepAlivePacket {
+                KeepAlivePacket {
+                    id: VarInt(origin.id as i32)
+                }
+            }
+        }
+        to_event {
+            | origin: KeepAlivePacket | -> Event {
+                Event::KeepAlive(KeepAlive {
+                    id: origin.id.0 as i64
+                })
+            }
+        }
+
+        fields {
+            id: VarInt,
+        }
+    }
+
+    (0x01) ClientBound Play JoinGamePacket: JoinGame {
+        from_event {
+            | origin: JoinGame | -> JoinGamePacket {
+                JoinGamePacket {
+                    id: origin.id,
+                    gamemode: gamemode_to_byte(&origin.gamemode) | (if origin.is_hardcore { 0x80 } else { 0x00 }),
+                    dimension: dimension_to_byte(&origin.dimension),
+                    difficulty: difficulty_to_byte(&origin.difficulty),
+                    max_players: origin.max_players as u8,
+                    level_type: origin.world_type,
+                    reduced_debug: origin.reduced_debug
+                }
+            }
+        }
+        to_event {
+            | origin: JoinGamePacket | -> Event {
+                Event::JoinGame(JoinGame {
+                    id: origin.id,
+                    gamemode: byte_to_gamemode(origin.gamemode),
+                    is_hardcore: origin.gamemode & 0x80 == 0x80,
+                    dimension: byte_to_dimension(origin.dimension),
+                    difficulty: byte_to_difficulty(origin.difficulty),
+                    max_players: origin.max_players as u32,
+                    world_type: origin.level_type,
+                    reduced_debug: origin.reduced_debug
+                })
+            }
+        }
+
+        fields {
+            id: Int,
+            gamemode: UnsignedByte,
+            dimension: Byte,
+            difficulty: UnsignedByte,
+            max_players: UnsignedByte,
+            level_type: String,
+            reduced_debug: bool,
+        }
+    }
+
+    (0x3F) ClientBound Play PluginMessagePacket: PluginMessage {
+        from_event {
+            | origin: PluginMessage | -> PluginMessagePacket {
+                PluginMessagePacket {
+                    channel: origin.channel,
+                    data: origin.data
+                }
+            }
+        }
+        to_event {
+            | origin: PluginMessagePacket | -> Event {
+                Event::PluginMessage(PluginMessage {
+                    channel: origin.channel,
+                    data: origin.data
+                })
+            }
+        }
+
+        fields {
+            channel: String,
+            data: Vec<u8>,
+        }
+    }
+
+    (0x41) ClientBound Play ServerDifficultyUpdatePacket: ServerDifficultyUpdate {
+        from_event {
+            | origin: ServerDifficultyUpdate | -> ServerDifficultyUpdatePacket {
+                ServerDifficultyUpdatePacket {
+                    difficulty: difficulty_to_byte(&origin.difficulty)
+                }
+            }
+        }
+        to_event {
+            | origin: ServerDifficultyUpdatePacket | -> Event {
+                Event::ServerDifficultyUpdate(ServerDifficultyUpdate {
+                    difficulty: byte_to_difficulty(origin.difficulty),
+                    difficulty_locked: false
+                })
+            }
+        }
+
+        fields {
+            difficulty: UnsignedByte,
+        }
+    }
 
 }

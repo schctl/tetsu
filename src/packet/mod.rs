@@ -100,7 +100,7 @@ macro_rules! packet_impl {
                         $name::read_from(&mut bytes).into_event()
                     },
                 )*
-                _ => panic!("Unknown packet: {:?}:{:?}:{:?}", id, direction, state),
+                _ => panic!("Unknown packet: [{:x}]:{:?}:{:?}", id, direction, state),
             }
         }
 
