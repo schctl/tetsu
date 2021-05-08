@@ -1,5 +1,7 @@
 //! Tools to encrypt packet data sent over the network.
 
+use crate::errors::Error;
+
 use openssl::encrypt::Encrypter;
 use openssl::pkey::{PKey, Public};
 pub use openssl::rand::rand_bytes;
@@ -22,9 +24,8 @@ pub fn generate_key(key: &mut [u8]) {
 
 /// Return a PublicKey object from a DER encoded RSA key.
 #[inline]
-pub fn pkey_from_der(key: &[u8]) -> PublicKey {
-    let rsa_key = Rsa::public_key_from_der(key).unwrap();
-    PKey::from_rsa(rsa_key).unwrap()
+pub fn pkey_from_der(key: &[u8]) -> Result<PublicKey, Error> {
+    Ok(PKey::from_rsa(Rsa::public_key_from_der(key)?)?)
 }
 
 /// Encrypt some data with an RSA public key.
@@ -36,21 +37,21 @@ pub struct RsaEncrypter<'a> {
 impl<'a> RsaEncrypter<'a> {
     /// Returns a new RSA encryptor from a Public key.
     #[inline]
-    pub fn new(key: &'a PublicKey) -> Self {
-        let mut encrypter = Encrypter::new(&key).unwrap();
-        encrypter.set_rsa_padding(Padding::PKCS1).unwrap();
-        Self { encrypter }
+    pub fn new(key: &'a PublicKey) -> Result<Self, Error> {
+        let mut encrypter = Encrypter::new(&key)?;
+        encrypter.set_rsa_padding(Padding::PKCS1)?;
+        Ok(Self { encrypter })
     }
 
-    /// Encrypt a buffer with an RSA encryptor.
-    pub fn encrypt(&self, buf: &[u8]) -> Vec<u8> {
+    /// Encrypt a buffer with an RSA key.
+    pub fn encrypt(&self, buf: &[u8]) -> Result<Vec<u8>, Error> {
         // Create an output buffer
-        let _buffer_len = self.encrypter.encrypt_len(&buf).unwrap();
+        let _buffer_len = self.encrypter.encrypt_len(&buf)?;
         let mut encrypted_buf = vec![0; _buffer_len];
         // Encrypt and truncate the buffer
-        let _encrypted_len = self.encrypter.encrypt(&buf, &mut encrypted_buf).unwrap();
+        let _encrypted_len = self.encrypter.encrypt(&buf, &mut encrypted_buf)?;
         encrypted_buf.truncate(_encrypted_len);
-        encrypted_buf
+        Ok(encrypted_buf)
     }
 }
 
@@ -63,10 +64,10 @@ pub struct DefaultStreamCipher<const KEY_LEN: usize> {
 impl<const KEY_LEN: usize> DefaultStreamCipher<KEY_LEN> {
     /// Constructs a new stream cipher
     #[inline]
-    pub fn new(key: [u8; KEY_LEN]) -> Self {
-        Self {
-            cipher: Cfb8::new_from_slices(&(key), &(key)).unwrap(),
-        }
+    pub fn new(key: [u8; KEY_LEN]) -> Result<Self, Error> {
+        Ok(Self {
+            cipher: Cfb8::new_from_slices(&(key), &(key))?,
+        })
     }
 
     /// Decrypt data using the internal cipher.

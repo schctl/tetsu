@@ -56,7 +56,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             protocol_version: VarInt,
             server_address: String,
@@ -84,7 +83,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             uuid: Uuid,
             name: String,
@@ -106,7 +104,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             reason: Chat,
         }

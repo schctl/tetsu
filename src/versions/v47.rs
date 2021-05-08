@@ -146,7 +146,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             payload: Long,
         }
@@ -167,7 +166,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             payload: Long,
         }
@@ -184,7 +182,6 @@ packet_impl! {
                 Event::StatusRequest(StatusRequest {})
             }
         }
-
         fields {
 
         }
@@ -205,7 +202,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             response: String,
         }
@@ -241,7 +237,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             protocol_version: VarInt,
             server_address: String,
@@ -267,7 +262,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             name: String,
         }
@@ -303,7 +297,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             reason: String,
         }
@@ -328,7 +321,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             server_id: String,
             public_key: ByteArrayVarInt,
@@ -353,7 +345,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             shared_secret: ByteArrayVarInt,
             verify_token: ByteArrayVarInt,
@@ -377,7 +368,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             uuid: String,
             name: String,
@@ -399,7 +389,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             threshold: VarInt,
         }
@@ -422,7 +411,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             id: VarInt,
         }
@@ -456,7 +444,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             id: Int,
             gamemode: UnsignedByte,
@@ -483,7 +470,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             location: PositionXZY,
         }
@@ -506,7 +492,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             channel: String,
             data: Vec<u8>,
@@ -529,7 +514,6 @@ packet_impl! {
                 })
             }
         }
-
         fields {
             difficulty: UnsignedByte,
         }

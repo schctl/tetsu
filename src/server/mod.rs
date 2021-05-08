@@ -165,10 +165,10 @@ impl Server {
         {
             encryption::generate_key(&mut shared);
 
-            let pkey = encryption::pkey_from_der(&encryption_request.public_key);
-            let encrypter = encryption::RsaEncrypter::new(&pkey);
-            let encypted_shared_secret = encrypter.encrypt(&shared);
-            let encrypted_verify_token = encrypter.encrypt(&encryption_request.verify_token);
+            let pkey = encryption::pkey_from_der(&encryption_request.public_key)?;
+            let encrypter = encryption::RsaEncrypter::new(&pkey)?;
+            let encypted_shared_secret = encrypter.encrypt(&shared)?;
+            let encrypted_verify_token = encrypter.encrypt(&encryption_request.verify_token)?;
 
             encryption_response.shared_secret = encypted_shared_secret;
             encryption_response.verify_token = encrypted_verify_token;
@@ -186,7 +186,7 @@ impl Server {
             .send_event(Event::EncryptionResponse(encryption_response))
             .unwrap();
 
-        self.connection.lock().unwrap().set_cipher(&shared);
+        self.connection.lock().unwrap().set_cipher(&shared)?;
 
         loop {
             let event = self.connection.lock().unwrap().read_event()?;

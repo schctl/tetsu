@@ -237,6 +237,7 @@ impl Writable for Double {
 // ---- String -------------
 
 impl Readable for String {
+    #[inline]
     fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
         let len = VarInt::read_from(buf)?.0;
         let mut bytes = Vec::<u8>::new();
@@ -246,6 +247,7 @@ impl Readable for String {
 }
 
 impl Writable for String {
+    #[inline]
     fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
         let bytes = self.as_bytes();
         let x = VarInt(bytes.len() as i32);
@@ -305,6 +307,7 @@ impl Writable for Chat {
 pub struct VarInt(pub i32);
 
 impl Readable for VarInt {
+    #[inline]
     fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
         let mut res: u32 = 0;
         let mut byte;
@@ -324,6 +327,7 @@ impl Readable for VarInt {
 }
 
 impl Writable for VarInt {
+    #[inline]
     fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
         let mut val = self.0 as u32;
 
@@ -392,6 +396,7 @@ impl Writable for Uuid {
 pub struct ByteArrayVarInt(pub usize, pub Vec<u8>);
 
 impl Readable for ByteArrayVarInt {
+    #[inline]
     fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
         let len = VarInt::read_from(buf)?.0 as usize;
         let mut data = Vec::with_capacity(len);
@@ -401,9 +406,9 @@ impl Readable for ByteArrayVarInt {
 }
 
 impl Writable for ByteArrayVarInt {
+    #[inline]
     fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
-        let len = VarInt(self.1.len() as i32);
-        len.write_to(buf)?;
+        VarInt(self.1.len() as i32).write_to(buf)?;
         Ok(buf.write_all(&self.1[..])?)
     }
 }
@@ -420,6 +425,7 @@ pub struct GenericArray<L: Into<usize> + From<usize> + Readable + Writable, C: R
 impl<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable> Readable
     for GenericArray<L, C>
 {
+    #[inline]
     fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
         let len = L::read_from(buf)?.into();
         let mut data = Vec::with_capacity(len);
@@ -433,6 +439,7 @@ impl<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable>
 impl<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable> Writable
     for GenericArray<L, C>
 {
+    #[inline]
     fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
         let len: L = self.1.len().into();
         len.write_to(buf)?;
@@ -446,6 +453,7 @@ impl<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable>
 impl<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable> From<Vec<C>>
     for GenericArray<L, C>
 {
+    #[inline]
     fn from(item: Vec<C>) -> Self {
         Self(item.len(), item, PhantomData)
     }

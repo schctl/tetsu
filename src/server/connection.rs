@@ -30,8 +30,9 @@ impl<const KEY_LEN: usize> EncryptedTcpStream<KEY_LEN> {
 
     /// Set the key to encrypt with.
     #[inline]
-    pub fn set_cipher(&mut self, key: &[u8; KEY_LEN]) {
-        self.cipher = Some(DefaultStreamCipher::new(*key));
+    pub fn set_cipher(&mut self, key: &[u8; KEY_LEN]) -> Result<(), Error> {
+        self.cipher = Some(DefaultStreamCipher::new(*key)?);
+        Ok(())
     }
 
     /// Get the current connected address.
@@ -134,8 +135,8 @@ impl EncryptedConnection {
 
     /// Set the key to encrypt with.
     #[inline]
-    pub fn set_cipher(&mut self, key: &[u8; 16]) {
-        self.stream.set_cipher(key);
+    pub fn set_cipher(&mut self, key: &[u8; 16]) -> Result<(), Error> {
+        Ok(self.stream.set_cipher(key)?)
     }
 
     /// Get the address of the internal `TcpStream`.
