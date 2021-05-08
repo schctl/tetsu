@@ -11,7 +11,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
 path = "src/lib.rs"
 
 [profile.release]
@@ -22,8 +22,7 @@ codegen-units = 1
 # Crypto
 aes = "^0.7"
 cfb8 = "^0.7"
-rand = "^0.8"
-openssl = "^0.10"
+openssl = { version = "0.10", features = ["vendored"] }
 
 # Misc
 ureq = "^2.1"
@@ -31,9 +30,9 @@ flate2 = "^1.0"
 log = "^0.4"
 
 # Serialization
-uuid = { version = "^0.8", default-features = false }
 byteorder = "^1.4"
 hematite-nbt = "^0.5"
+uuid = { version = "^0.8", default-features = false }
 
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "^0.1"

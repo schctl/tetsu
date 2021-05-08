@@ -1,9 +1,8 @@
 //! Tools to encrypt packet data sent over the network.
 
-use rand::Rng;
-
 use openssl::encrypt::Encrypter;
 use openssl::pkey::{PKey, Public};
+pub use openssl::rand::rand_bytes;
 use openssl::rsa::{Padding, Rsa};
 pub use openssl::sha::Sha1;
 
@@ -18,7 +17,7 @@ pub type PublicKey = PKey<Public>;
 /// Fills `key` with random bytes.
 #[inline]
 pub fn generate_key(key: &mut [u8]) {
-    rand::thread_rng().fill(key);
+    rand_bytes(key).unwrap();
 }
 
 /// Return a PublicKey object from a DER encoded RSA key.
