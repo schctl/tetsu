@@ -2,6 +2,8 @@
 //! The type name indicates the type that is sent/to be sent.
 //! It's methods return/write the equivalent type.
 
+use crate::errors;
+
 use std::convert::From;
 use std::io::{self, prelude::*};
 use std::marker::PhantomData;
@@ -12,9 +14,12 @@ use serde::{Deserialize, Serialize};
 pub use nbt::Blob as NbtBlob;
 pub use uuid::Uuid;
 
-pub trait Serializable {
-    fn read_from<T: io::Read>(buf: &mut T) -> Self;
-    fn write_to<T: io::Write>(&self, buf: &mut T);
+pub trait Readable: Sized {
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error>;
+}
+
+pub trait Writable: Sized {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error>;
 }
 
 // -----------------------------------
@@ -26,15 +31,17 @@ pub trait Serializable {
 
 pub type Bool = bool;
 
-impl Serializable for Bool {
+impl Readable for Bool {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
-        buf.read_u8().unwrap() == 0x01
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+        Ok(buf.read_u8()? == 0x01)
     }
+}
 
+impl Writable for Bool {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
-        buf.write_u8(if *self { 0x01 } else { 0x00 }).unwrap();
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+        Ok(buf.write_u8(if *self { 0x01 } else { 0x00 })?)
     }
 }
 
@@ -42,15 +49,17 @@ impl Serializable for Bool {
 
 pub type Byte = i8;
 
-impl Serializable for Byte {
+impl Readable for Byte {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
-        buf.read_i8().unwrap()
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+        Ok(buf.read_i8()?)
     }
+}
 
+impl Writable for Byte {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
-        buf.write_i8(*self).unwrap();
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+        Ok(buf.write_i8(*self)?)
     }
 }
 
@@ -58,15 +67,17 @@ impl Serializable for Byte {
 
 pub type UnsignedByte = u8;
 
-impl Serializable for UnsignedByte {
+impl Readable for UnsignedByte {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
-        buf.read_u8().unwrap()
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+        Ok(buf.read_u8()?)
     }
+}
 
+impl Writable for UnsignedByte {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
-        buf.write_u8(*self).unwrap();
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+        Ok(buf.write_u8(*self)?)
     }
 }
 
@@ -74,15 +85,17 @@ impl Serializable for UnsignedByte {
 
 pub type Short = i16;
 
-impl Serializable for Short {
+impl Readable for Short {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
-        buf.read_i16::<BigEndian>().unwrap()
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+        Ok(buf.read_i16::<BigEndian>()?)
     }
+}
 
+impl Writable for Short {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
-        buf.write_i16::<BigEndian>(*self).unwrap();
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+        Ok(buf.write_i16::<BigEndian>(*self)?)
     }
 }
 
@@ -90,15 +103,17 @@ impl Serializable for Short {
 
 pub type UnsignedShort = u16;
 
-impl Serializable for UnsignedShort {
+impl Readable for UnsignedShort {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
-        buf.read_u16::<BigEndian>().unwrap()
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+        Ok(buf.read_u16::<BigEndian>()?)
     }
+}
 
+impl Writable for UnsignedShort {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
-        buf.write_u16::<BigEndian>(*self).unwrap();
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+        Ok(buf.write_u16::<BigEndian>(*self)?)
     }
 }
 
@@ -106,15 +121,17 @@ impl Serializable for UnsignedShort {
 
 pub type Int = i32;
 
-impl Serializable for Int {
+impl Readable for Int {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
-        buf.read_i32::<BigEndian>().unwrap()
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+        Ok(buf.read_i32::<BigEndian>()?)
     }
+}
 
+impl Writable for Int {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
-        buf.write_i32::<BigEndian>(*self).unwrap();
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+        Ok(buf.write_i32::<BigEndian>(*self)?)
     }
 }
 
@@ -125,15 +142,17 @@ impl Serializable for Int {
 
 pub type UnsignedInt = u32;
 
-impl Serializable for UnsignedInt {
+impl Readable for UnsignedInt {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
-        buf.read_u32::<BigEndian>().unwrap()
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+        Ok(buf.read_u32::<BigEndian>()?)
     }
+}
 
+impl Writable for UnsignedInt {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
-        buf.write_u32::<BigEndian>(*self).unwrap();
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+        Ok(buf.write_u32::<BigEndian>(*self)?)
     }
 }
 
@@ -144,15 +163,17 @@ impl Serializable for UnsignedInt {
 
 pub type Long = i64;
 
-impl Serializable for Long {
+impl Readable for Long {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
-        buf.read_i64::<BigEndian>().unwrap()
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+        Ok(buf.read_i64::<BigEndian>()?)
     }
+}
 
+impl Writable for Long {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
-        buf.write_i64::<BigEndian>(*self).unwrap();
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+        Ok(buf.write_i64::<BigEndian>(*self)?)
     }
 }
 
@@ -163,15 +184,17 @@ impl Serializable for Long {
 
 pub type UnsignedLong = u64;
 
-impl Serializable for UnsignedLong {
+impl Readable for UnsignedLong {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
-        buf.read_u64::<BigEndian>().unwrap()
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+        Ok(buf.read_u64::<BigEndian>()?)
     }
+}
 
+impl Writable for UnsignedLong {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
-        buf.write_u64::<BigEndian>(*self).unwrap();
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+        Ok(buf.write_u64::<BigEndian>(*self)?)
     }
 }
 
@@ -179,15 +202,17 @@ impl Serializable for UnsignedLong {
 
 pub type Float = f32;
 
-impl Serializable for Float {
+impl Readable for Float {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
-        buf.read_f32::<BigEndian>().unwrap()
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+        Ok(buf.read_f32::<BigEndian>()?)
     }
+}
 
+impl Writable for Float {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
-        buf.write_f32::<BigEndian>(*self).unwrap();
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+        Ok(buf.write_f32::<BigEndian>(*self)?)
     }
 }
 
@@ -195,33 +220,37 @@ impl Serializable for Float {
 
 pub type Double = f64;
 
-impl Serializable for Double {
+impl Readable for Double {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
-        buf.read_f64::<BigEndian>().unwrap()
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+        Ok(buf.read_f64::<BigEndian>()?)
     }
+}
 
+impl Writable for Double {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
-        buf.write_f64::<BigEndian>(*self).unwrap();
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+        Ok(buf.write_f64::<BigEndian>(*self)?)
     }
 }
 
 // ---- String -------------
 
-impl Serializable for String {
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
-        let len = VarInt::read_from(buf).0;
+impl Readable for String {
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+        let len = VarInt::read_from(buf)?.0;
         let mut bytes = Vec::<u8>::new();
-        buf.take(len as u64).read_to_end(&mut bytes).unwrap();
-        Self::from_utf8(bytes).unwrap()
+        buf.take(len as u64).read_to_end(&mut bytes)?;
+        Ok(Self::from_utf8(bytes)?)
     }
+}
 
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
+impl Writable for String {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
         let bytes = self.as_bytes();
         let x = VarInt(bytes.len() as i32);
-        x.write_to(buf);
-        buf.write_all(bytes).unwrap();
+        x.write_to(buf)?;
+        Ok(buf.write_all(bytes)?)
     }
 }
 
@@ -250,15 +279,17 @@ pub struct Chat {
     pub extra: Option<Vec<Self>>,
 }
 
-impl Serializable for Chat {
+impl Readable for Chat {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
-        let val = String::read_from(buf);
-        serde_json::from_str(&val[..]).unwrap()
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+        let val = String::read_from(buf)?;
+        Ok(serde_json::from_str(&val[..])?)
     }
+}
 
+impl Writable for Chat {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
         let val = serde_json::to_string(&self).unwrap();
         val.write_to(buf)
     }
@@ -273,13 +304,13 @@ impl Serializable for Chat {
 #[derive(Debug, PartialEq, Eq)]
 pub struct VarInt(pub i32);
 
-impl Serializable for VarInt {
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
+impl Readable for VarInt {
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
         let mut res: u32 = 0;
         let mut byte;
 
         for byte_index in 0..6 {
-            byte = buf.read_u8().unwrap() as u32;
+            byte = buf.read_u8()? as u32;
 
             res |= (byte & 0x7F) << (byte_index * 7);
 
@@ -288,10 +319,12 @@ impl Serializable for VarInt {
             }
         }
 
-        Self(res as i32)
+        Ok(Self(res as i32))
     }
+}
 
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
+impl Writable for VarInt {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
         let mut val = self.0 as u32;
 
         loop {
@@ -300,11 +333,11 @@ impl Serializable for VarInt {
             val >>= 7;
 
             if val == 0 {
-                buf.write_u8(byte as u8).unwrap();
-                return;
+                buf.write_u8(byte as u8)?;
+                return Ok(());
             }
 
-            buf.write_u8((byte | 0b10000000) as u8).unwrap();
+            buf.write_u8((byte | 0b10000000) as u8)?;
         }
     }
 }
@@ -339,15 +372,17 @@ impl From<VarInt> for usize {
 
 // ---- UUID ---------------
 
-impl Serializable for Uuid {
+impl Readable for Uuid {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
-        Self::from_u128(buf.read_u128::<BigEndian>().unwrap())
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+        Ok(Self::from_u128(buf.read_u128::<BigEndian>()?))
     }
+}
 
+impl Writable for Uuid {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
-        buf.write_u128::<BigEndian>(self.as_u128()).unwrap();
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+        Ok(buf.write_u128::<BigEndian>(self.as_u128())?)
     }
 }
 
@@ -356,52 +391,59 @@ impl Serializable for Uuid {
 #[derive(Debug, PartialEq, Eq)]
 pub struct ByteArrayVarInt(pub usize, pub Vec<u8>);
 
-impl Serializable for ByteArrayVarInt {
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
-        let len = VarInt::read_from(buf).0 as usize;
+impl Readable for ByteArrayVarInt {
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+        let len = VarInt::read_from(buf)?.0 as usize;
         let mut data = Vec::with_capacity(len);
-        buf.take(len as u64).read_to_end(&mut data).unwrap();
-        Self(len, data)
+        buf.take(len as u64).read_to_end(&mut data)?;
+        Ok(Self(len, data))
     }
+}
 
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
+impl Writable for ByteArrayVarInt {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
         let len = VarInt(self.1.len() as i32);
-        len.write_to(buf);
-        buf.write_all(&self.1[..]).unwrap();
+        len.write_to(buf)?;
+        Ok(buf.write_all(&self.1[..])?)
     }
 }
 
 // ---- Arrays -------------
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct GenericArray<L: Into<usize> + From<usize> + Serializable, C: Serializable>(
+pub struct GenericArray<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable>(
     pub usize,
     pub Vec<C>,
     PhantomData<L>,
 );
 
-impl<L: Into<usize> + From<usize> + Serializable, C: Serializable> Serializable
+impl<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable> Readable
     for GenericArray<L, C>
 {
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
-        let len = L::read_from(buf).into();
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+        let len = L::read_from(buf)?.into();
         let mut data = Vec::with_capacity(len);
         for _ in 0..len {
-            data.push(C::read_from(buf));
+            data.push(C::read_from(buf)?);
         }
-        Self(len, data, PhantomData)
-    }
-
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
-        let len: L = self.1.len().into();
-        len.write_to(buf);
-        for i in &self.1 {
-            i.write_to(buf);
-        }
+        Ok(Self(len, data, PhantomData))
     }
 }
 
-impl<L: Into<usize> + From<usize> + Serializable, C: Serializable> From<Vec<C>>
+impl<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable> Writable
+    for GenericArray<L, C>
+{
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+        let len: L = self.1.len().into();
+        len.write_to(buf)?;
+        for i in &self.1 {
+            i.write_to(buf)?;
+        }
+        Ok(())
+    }
+}
+
+impl<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable> From<Vec<C>>
     for GenericArray<L, C>
 {
     fn from(item: Vec<C>) -> Self {
@@ -411,30 +453,34 @@ impl<L: Into<usize> + From<usize> + Serializable, C: Serializable> From<Vec<C>>
 
 // ---- Vec ----------------
 
-impl Serializable for Vec<UnsignedByte> {
+impl Readable for Vec<UnsignedByte> {
     #[inline]
-    fn read_from<R: io::Read>(buf: &mut R) -> Self {
+    fn read_from<R: io::Read>(buf: &mut R) -> Result<Self, errors::Error> {
         let mut v = Vec::new();
-        buf.read_to_end(&mut v).unwrap();
-        v
+        buf.read_to_end(&mut v)?;
+        Ok(v)
     }
+}
 
+impl Writable for Vec<UnsignedByte> {
     #[inline]
-    fn write_to<W: io::Write>(&self, buf: &mut W) {
-        buf.write_all(&self[..]).unwrap()
+    fn write_to<W: io::Write>(&self, buf: &mut W) -> Result<(), errors::Error> {
+        Ok(buf.write_all(&self[..])?)
     }
 }
 
 // ---- Named Binary Tags --
 
-impl Serializable for NbtBlob {
+impl Readable for NbtBlob {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Self {
-        Self::from_reader(buf).unwrap()
+    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+        Ok(Self::from_reader(buf)?)
     }
+}
 
+impl Writable for NbtBlob {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) {
-        self.to_writer(buf).unwrap()
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+        Ok(self.to_writer(buf)?)
     }
 }

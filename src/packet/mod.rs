@@ -65,37 +65,42 @@ macro_rules! packet_impl {
 
         #[allow(unused_imports)]
         use crate::packet::*;
+        use crate::errors::Error;
 
         /// Implementation for converting protocol-specific calls to `Event`s.
-        pub fn read_event<T: std::io::Read>(buf: &mut T, state: &PacketState, direction: &PacketDirection, compression_threshold: i32) -> Event {
-            let mut bytes = vec![0; VarInt::read_from(buf).0 as usize];
-            buf.read_exact(&mut bytes).unwrap();
+        pub fn read_event
+            <T: std::io::Read>
+            (buf: &mut T, state: &PacketState, direction: &PacketDirection, compression_threshold: i32)
+            -> Result<Event, Error>
+        {
+            let mut bytes = vec![0; VarInt::read_from(buf)?.0 as usize];
+            buf.read_exact(&mut bytes)?;
 
             let mut bytes = std::io::Cursor::new(bytes);
 
             if compression_threshold > 0 {
-                let uncompressed_size = VarInt::read_from(&mut bytes).0;
+                let uncompressed_size = VarInt::read_from(&mut bytes)?.0;
 
                 if uncompressed_size > 0 {
                     let mut reader = ZlibDecoder::new(bytes);
                     let mut new_bytes = Vec::with_capacity(uncompressed_size as usize);
-                    reader.read_to_end(&mut new_bytes).unwrap();
+                    reader.read_to_end(&mut new_bytes)?;
                     bytes = std::io::Cursor::new(new_bytes);
                 }
             }
 
-            let id = VarInt::read_from(&mut bytes).0;
+            let id = VarInt::read_from(&mut bytes)?.0;
 
             #[allow(unreachable_pattern)]
             match (&id, direction, state) {
                 $(
                     (&<$inherit>::ID, &<$inherit>::DIRECTION, &<$inherit>::STATE) => {
-                        <$inherit>::read_from(&mut bytes).into_event()
+                        Ok(<$inherit>::read_from(&mut bytes)?.into_event())
                     },
                 )*
                 $(
                     (&$id, &PacketDirection::$direction, &PacketState::$state) => {
-                        $name::read_from(&mut bytes).into_event()
+                        Ok($name::read_from(&mut bytes)?.into_event())
                     },
                 )*
                 _ => panic!("Unknown packet: [{:x}]:{:?}:{:?}", id, direction, state),
@@ -103,36 +108,42 @@ macro_rules! packet_impl {
         }
 
         /// Implementation for converting `Event`s to protocol-specific calls.
-        pub fn write_event<T: std::io::Write>(event: Event, buf: &mut T, compression_threshold: i32) {
+        pub fn write_event
+            <T: std::io::Write>
+            (event: Event, buf: &mut T, compression_threshold: i32)
+            -> Result<(), Error>
+        {
             let mut _buf = Vec::new();
 
             #[allow(unreachable_patterns)]
             match event {
                 $(
                     Event::$inherit_event(origin) => {
-                        <$inherit>::from_event(origin).write_to(&mut _buf)
+                        <$inherit>::from_event(origin).write_to(&mut _buf)?
                     },
                 )*
                 $(
                     Event::$event_type(origin) => {
-                        $name::from_event(origin).write_to(&mut _buf)
+                        $name::from_event(origin).write_to(&mut _buf)?
                     },
                 )*
                 _ => panic!("Unknown packet"),
             }
 
             if compression_threshold <= 0 {
-                VarInt(_buf.len() as i32).write_to(buf);
-                buf.write_all(&_buf).unwrap();
+                VarInt(_buf.len() as i32).write_to(buf)?;
+                buf.write_all(&_buf)?;
             } else {
                 let uncompressed_len = _buf.len();
                 let mut compressed = vec![];
-                VarInt(uncompressed_len as i32).write_to(&mut compressed);
+                VarInt(uncompressed_len as i32).write_to(&mut compressed)?;
                 let mut writer = ZlibEncoder::new(std::io::Cursor::new(_buf), Compression::default());
-                writer.read_to_end(&mut compressed).unwrap();
-                VarInt(compressed.len() as i32).write_to(buf);
-                buf.write_all(&compressed).unwrap();
+                writer.read_to_end(&mut compressed)?;
+                VarInt(compressed.len() as i32).write_to(buf)?;
+                buf.write_all(&compressed)?;
             }
+
+            Ok(())
         }
 
         $(
@@ -162,24 +173,27 @@ macro_rules! packet_impl {
                 }
             }
 
-            impl Serializable for $name {
+            impl Readable for $name {
                 #[inline]
                 #[allow(unused_variables)]
-                fn read_from<T: std::io::Read>(buf: &mut T) -> Self {
-                    Self {
+                fn read_from<T: std::io::Read>(buf: &mut T) -> Result<Self, Error> {
+                    Ok(Self {
                         $(
-                            $field_name: <$field_type>::read_from(buf),
+                            $field_name: <$field_type>::read_from(buf)?,
                         )*
-                    }
+                    })
                 }
+            }
 
+            impl Writable for $name {
                 #[inline]
                 #[allow(unused_variables)]
-                fn write_to<T: std::io::Write>(&self, buf: &mut T) {
-                    VarInt(Self::ID).write_to(buf);
+                fn write_to<T: std::io::Write>(&self, buf: &mut T) -> Result<(), Error> {
+                    VarInt(Self::ID).write_to(buf)?;
                     $(
-                        self.$field_name.write_to(buf);
+                        self.$field_name.write_to(buf)?;
                     )*
+                    Ok(())
                 }
             }
         )*

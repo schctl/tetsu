@@ -26,6 +26,7 @@ openssl = { version = "0.10", features = ["vendored"] }
 
 # Misc
 ureq = "^2.1"
+quick-error = "^2.0"
 flate2 = "^1.0"
 log = "^0.4"
 

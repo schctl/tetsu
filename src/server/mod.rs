@@ -9,6 +9,7 @@ use std::time;
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
+use crate::errors::Error;
 use crate::event::{self, Event};
 use crate::{encryption, packet};
 use crate::{event::ProtocolVersion, user::User};
@@ -28,24 +29,28 @@ impl Server {
     /// The connection will use port `25565` if the `port` argument is `None`.
     /// The protocol version will be auto-detected if the `protocol` argument is `None`.
     #[inline]
-    pub fn new(address: &str, port: Option<u16>, protocol: Option<ProtocolVersion>) -> Self {
+    pub fn new(
+        address: &str,
+        port: Option<u16>,
+        protocol: Option<ProtocolVersion>,
+    ) -> Result<Self, Error> {
         let port = match port {
             Some(p) => p,
             _ => 25565,
         };
 
-        Self {
+        Ok(Self {
             connection: Mutex::new(EncryptedConnection::new(
                 address,
                 port,
                 match protocol {
                     Some(p) => p,
-                    _ => Self::get_version(&address, port),
+                    _ => Self::get_version(&address, port)?,
                 },
             )),
             connected_address: format!("{}:{}", address, port),
             connected_user: None,
-        }
+        })
     }
 
     /// Get the address with which the server was connected to,
@@ -68,40 +73,44 @@ impl Server {
 
     /// Read incoming server events.
     #[inline]
-    pub fn read_event(&self) -> Event {
+    pub fn read_event(&self) -> Result<Event, Error> {
         self.connection.lock().unwrap().read_event()
     }
 
     /// Send an event to the server.
     #[inline]
-    pub fn send_event(&self, _event: Event) {
+    pub fn send_event(&self, _event: Event) -> Result<(), Error> {
         self.connection.lock().unwrap().send_event(_event)
     }
 
     /// Attempt to get the protocol version of a server.
-    pub fn get_version(address: &str, port: u16) -> ProtocolVersion {
+    pub fn get_version(address: &str, port: u16) -> Result<ProtocolVersion, Error> {
         let mut connection = EncryptedConnection::new(address, port, event::ProtocolVersion::V47);
 
         connection.set_state(&packet::PacketState::Handshake);
 
-        connection.send_event(Event::Handshake(event::Handshake {
-            server_address: address.to_owned(),
-            server_port: port,
-            next_state: packet::PacketState::Status,
-        }));
+        connection
+            .send_event(Event::Handshake(event::Handshake {
+                server_address: address.to_owned(),
+                server_port: port,
+                next_state: packet::PacketState::Status,
+            }))
+            .unwrap();
 
         connection.set_state(&packet::PacketState::Status);
 
-        connection.send_event(Event::StatusRequest(event::StatusRequest {}));
+        connection
+            .send_event(Event::StatusRequest(event::StatusRequest {}))
+            .unwrap();
 
-        match connection.read_event() {
+        Ok(match connection.read_event()? {
             Event::StatusResponse(e) => e.response.version.protocol,
             _ => panic!("Unknown event"),
-        }
+        })
     }
 
     /// Connect a user to the server. Only one user can be connected at a time.
-    pub fn connect_player(&mut self, profile: &User) {
+    pub fn connect_player(&mut self, profile: &User) -> Result<(), Error> {
         let start = time::Instant::now();
 
         if let Some(p) = &self.connected_user {
@@ -125,7 +134,8 @@ impl Server {
                 server_address: address,
                 server_port: port,
                 next_state: packet::PacketState::Login,
-            }));
+            }))
+            .unwrap();
 
         self.connection
             .lock()
@@ -137,9 +147,10 @@ impl Server {
             .unwrap()
             .send_event(Event::LoginStart(event::LoginStart {
                 name: profile.selected_profile.name.clone(),
-            }));
+            }))
+            .unwrap();
 
-        let encryption_request = match self.connection.lock().unwrap().read_event() {
+        let encryption_request = match self.connection.lock().unwrap().read_event()? {
             Event::EncryptionRequest(e) => e,
             _ => panic!("Unknown event!"),
         };
@@ -172,12 +183,13 @@ impl Server {
         self.connection
             .lock()
             .unwrap()
-            .send_event(Event::EncryptionResponse(encryption_response));
+            .send_event(Event::EncryptionResponse(encryption_response))
+            .unwrap();
 
         self.connection.lock().unwrap().set_cipher(&shared);
 
         loop {
-            let event = self.connection.lock().unwrap().read_event();
+            let event = self.connection.lock().unwrap().read_event()?;
             match event {
                 Event::SetCompression(c) => self
                     .connection
@@ -198,5 +210,7 @@ impl Server {
             .lock()
             .unwrap()
             .set_state(&packet::PacketState::Play);
+
+        Ok(())
     }
 }

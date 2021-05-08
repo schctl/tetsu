@@ -11,11 +11,11 @@ fn main() {
         env::var("MOJANG_USER_PWD").unwrap(),
     );
 
-    let mut server = server::Server::new("127.0.0.1", None, None);
+    let mut server = server::Server::new("127.0.0.1", None, None).unwrap();
 
-    server.connect_player(&user);
+    server.connect_player(&user).unwrap();
 
     loop {
-        println!("{:?}", server.read_event());
+        println!("{:?}", server.read_event().unwrap());
     }
 }

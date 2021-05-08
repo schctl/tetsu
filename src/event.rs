@@ -10,9 +10,11 @@ use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_repr::*;
 
+use crate::errors::Error;
 use crate::packet::*;
 use crate::versions;
 
+#[non_exhaustive]
 #[allow(dead_code)]
 #[derive(Serialize_repr, Deserialize_repr, Debug, PartialEq, Eq)]
 #[repr(u16)]
@@ -54,13 +56,14 @@ impl Event {
         _state: &PacketState,
         protocol: &ProtocolVersion,
         compression_threshold: i32,
-    ) {
+    ) -> Result<(), Error> {
         let start = time::Instant::now();
         match protocol {
             ProtocolVersion::V47 => versions::v47::write_event(self, buf, compression_threshold),
             ProtocolVersion::V754 => versions::v754::write_event(self, buf, compression_threshold),
-        };
-        debug!("Wrote event: Took: {} us", start.elapsed().as_micros(),);
+        }?;
+        debug!("Wrote event: Took: {} us", start.elapsed().as_micros());
+        Ok(())
     }
 
     /// Read an event from a buffer.
@@ -70,7 +73,7 @@ impl Event {
         state: &PacketState,
         protocol: &ProtocolVersion,
         compression_threshold: i32,
-    ) -> Self {
+    ) -> Result<Self, Error> {
         let start = time::Instant::now();
         let ev = match protocol {
             ProtocolVersion::V47 => versions::v47::read_event(
@@ -86,7 +89,7 @@ impl Event {
                 compression_threshold,
             ),
         };
-        debug!("Read event: Took: {} us", start.elapsed().as_micros(),);
+        debug!("Read event: Took: {} us", start.elapsed().as_micros());
         ev
     }
 }

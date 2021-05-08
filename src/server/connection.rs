@@ -5,6 +5,7 @@ use std::io;
 pub use std::net::SocketAddr;
 use std::net::TcpStream;
 
+use crate::errors::Error;
 use crate::event;
 use crate::packet;
 use crate::{encryption::DefaultStreamCipher, packet::PacketState};
@@ -111,7 +112,7 @@ impl EncryptedConnection {
 
     /// Read and parse a packet from the internal `TcpStream`.
     #[inline]
-    pub fn read_event(&mut self) -> event::Event {
+    pub fn read_event(&mut self) -> Result<event::Event, Error> {
         event::Event::read_from(
             &mut self.stream,
             &self.state,
@@ -122,7 +123,7 @@ impl EncryptedConnection {
 
     /// Send a packet to the internal `TcpStream`.
     #[inline]
-    pub fn send_event(&mut self, _event: event::Event) {
+    pub fn send_event(&mut self, _event: event::Event) -> Result<(), Error> {
         _event.write_to(
             &mut self.stream,
             &self.state,

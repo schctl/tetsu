@@ -3,6 +3,7 @@
 #[macro_use]
 mod packet;
 mod encryption;
+mod errors;
 pub mod event;
 pub mod server;
 #[allow(dead_code)]
@@ -14,18 +15,18 @@ mod type_tests {
     use std::io::Cursor;
 
     use super::*;
-    use packet::Serializable;
+    use packet::{Readable, Writable};
 
     macro_rules! test_type_serialization {
         ( $type:ty, $val:expr ) => {
             let x = $val;
             // ----------------
             let mut f = Cursor::new(vec![]);
-            x.write_to(&mut f);
+            x.write_to(&mut f).unwrap();
             println!("{:?}", f);
             // ----------------
             f.set_position(0);
-            let y = <$type>::read_from(&mut f);
+            let y = <$type>::read_from(&mut f).unwrap();
             // ----------------
             assert!(x == y)
         };
