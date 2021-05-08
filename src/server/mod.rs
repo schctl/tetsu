@@ -9,9 +9,9 @@ use std::time;
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
-use crate::errors::Error;
+use crate::encryption;
+use crate::errors::*;
 use crate::event::{self, Event};
-use crate::{encryption, packet};
 use crate::{event::ProtocolVersion, user::User};
 
 /// High level wrapper around a Minecraft server connection.
@@ -87,17 +87,17 @@ impl Server {
     pub fn get_version(address: &str, port: u16) -> Result<ProtocolVersion, Error> {
         let mut connection = EncryptedConnection::new(address, port, event::ProtocolVersion::V47);
 
-        connection.set_state(&packet::PacketState::Handshake);
+        connection.set_state(&event::EventState::Handshake);
 
         connection
             .send_event(Event::Handshake(event::Handshake {
                 server_address: address.to_owned(),
                 server_port: port,
-                next_state: packet::PacketState::Status,
+                next_state: event::EventState::Status,
             }))
             .unwrap();
 
-        connection.set_state(&packet::PacketState::Status);
+        connection.set_state(&event::EventState::Status);
 
         connection
             .send_event(Event::StatusRequest(event::StatusRequest {}))
@@ -105,7 +105,11 @@ impl Server {
 
         Ok(match connection.read_event()? {
             Event::StatusResponse(e) => e.response.version.protocol,
-            _ => panic!("Unknown event"),
+            _ => {
+                return Err(Error::from(InvalidValue {
+                    expected: "StatusResponse".to_owned(),
+                }))
+            }
         })
     }
 
@@ -125,7 +129,7 @@ impl Server {
         self.connection
             .lock()
             .unwrap()
-            .set_state(&packet::PacketState::Handshake);
+            .set_state(&event::EventState::Handshake);
 
         self.connection
             .lock()
@@ -133,14 +137,14 @@ impl Server {
             .send_event(Event::Handshake(event::Handshake {
                 server_address: address,
                 server_port: port,
-                next_state: packet::PacketState::Login,
+                next_state: event::EventState::Login,
             }))
             .unwrap();
 
         self.connection
             .lock()
             .unwrap()
-            .set_state(&packet::PacketState::Login);
+            .set_state(&event::EventState::Login);
 
         self.connection
             .lock()
@@ -209,7 +213,7 @@ impl Server {
         self.connection
             .lock()
             .unwrap()
-            .set_state(&packet::PacketState::Play);
+            .set_state(&event::EventState::Play);
 
         Ok(())
     }

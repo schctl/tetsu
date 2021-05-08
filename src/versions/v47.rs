@@ -1,6 +1,7 @@
 //! Event implementation for v47 of the protocol.
 //! V47 covers server versions 1.8 - 1.8.9
 
+use crate::errors::*;
 use crate::event::*;
 use crate::packet::*;
 
@@ -124,7 +125,7 @@ use internal::*;
 
 // ---------------
 
-packet_impl! {
+protocol_impl! {
 
     inherit {
     }
@@ -133,17 +134,17 @@ packet_impl! {
 
     (0x01) ServerBound Status StatusPingPacket: Ping {
         from_event {
-            | origin: Ping | -> StatusPingPacket {
-                StatusPingPacket {
+            | origin: Ping | -> TetsuResult<StatusPingPacket> {
+                Ok(StatusPingPacket {
                     payload: origin.payload
-                }
+                })
             }
         }
         to_event {
-            | origin: StatusPingPacket | -> Event {
-                Event::Ping(Ping {
+            | origin: StatusPingPacket | -> Result<Event, Error> {
+                Ok(Event::Ping(Ping {
                     payload: origin.payload
-                })
+                }))
             }
         }
         fields {
@@ -153,17 +154,17 @@ packet_impl! {
 
     (0x01) ClientBound Status StatusPongPacket: Pong {
         from_event {
-            | origin: Pong | -> StatusPongPacket {
-                StatusPongPacket {
+            | origin: Pong | -> TetsuResult<StatusPongPacket> {
+                Ok(StatusPongPacket {
                     payload: origin.payload
-                }
+                })
             }
         }
         to_event {
-            | origin: StatusPongPacket | -> Event {
-                Event::Pong(Pong {
+            | origin: StatusPongPacket | -> TetsuResult<Event> {
+                Ok(Event::Pong(Pong {
                     payload: origin.payload
-                })
+                }))
             }
         }
         fields {
@@ -173,13 +174,13 @@ packet_impl! {
 
     (0x00) ServerBound Status StatusRequestPacket: StatusRequest {
         from_event {
-            | _: StatusRequest | -> StatusRequestPacket {
-                StatusRequestPacket {}
+            | _: StatusRequest | -> TetsuResult<StatusRequestPacket> {
+                Ok(StatusRequestPacket {})
             }
         }
         to_event {
-            | _: StatusRequestPacket | -> Event {
-                Event::StatusRequest(StatusRequest {})
+            | _: StatusRequestPacket | -> TetsuResult<Event> {
+                Ok(Event::StatusRequest(StatusRequest {}))
             }
         }
         fields {
@@ -189,17 +190,17 @@ packet_impl! {
 
     (0x00) ClientBound Status StatusResponsePacket: StatusResponse {
         from_event {
-            | origin: StatusResponse | -> StatusResponsePacket {
-                StatusResponsePacket {
+            | origin: StatusResponse | -> TetsuResult<StatusResponsePacket> {
+                Ok(StatusResponsePacket {
                     response: serde_json::to_string(&origin.response).unwrap()
-                }
+                })
             }
         }
         to_event {
-            | origin: StatusResponsePacket | -> Event {
-                Event::StatusResponse(StatusResponse {
+            | origin: StatusResponsePacket | -> TetsuResult<Event> {
+                Ok(Event::StatusResponse(StatusResponse {
                     response: serde_json::from_str(&origin.response[..]).unwrap()
-                })
+                }))
             }
         }
         fields {
@@ -211,30 +212,30 @@ packet_impl! {
 
     (0x00) ServerBound Handshake HandshakePacket: Handshake {
         from_event {
-            | origin: Handshake | -> HandshakePacket {
-                HandshakePacket {
+            | origin: Handshake | -> TetsuResult<HandshakePacket> {
+                Ok(HandshakePacket {
                     protocol_version: VarInt(47),
                     server_address: origin.server_address,
                     server_port: origin.server_port,
                     next_state: match origin.next_state {
-                        PacketState::Status => VarInt(1),
-                        PacketState::Login => VarInt(2),
-                        _ => panic!("Invalid next state for handshake!")
+                        EventState::Status => VarInt(1),
+                        EventState::Login => VarInt(2),
+                        _ => return Err(Error::from(InvalidValue { expected: "Status or Login".to_owned() }))
                     }
-                }
+                })
             }
         }
         to_event {
-            | origin: HandshakePacket | -> Event {
-                Event::Handshake(Handshake {
+            | origin: HandshakePacket | -> TetsuResult<Event> {
+                Ok(Event::Handshake(Handshake {
                     server_address: origin.server_address,
                     server_port: origin.server_port,
                     next_state: match origin.next_state.0 {
-                        1 => PacketState::Status,
-                        2 => PacketState::Login,
-                        _ => panic!("Invalid next state for handshake!")
+                        1 => EventState::Status,
+                        2 => EventState::Login,
+                        _ => return Err(Error::from(InvalidValue { expected: "1 or 2".to_owned() }))
                     }
-                })
+                }))
             }
         }
         fields {
@@ -249,17 +250,17 @@ packet_impl! {
 
     (0x00) ServerBound Login LoginStartPacket: LoginStart {
         from_event {
-            | origin: LoginStart | -> LoginStartPacket {
-                LoginStartPacket {
+            | origin: LoginStart | -> TetsuResult<LoginStartPacket> {
+                Ok(LoginStartPacket {
                     name: origin.name
-                }
+                })
             }
         }
         to_event {
-            | origin: LoginStartPacket | -> Event {
-                Event::LoginStart(LoginStart {
+            | origin: LoginStartPacket | -> TetsuResult<Event> {
+                Ok(Event::LoginStart(LoginStart {
                     name: origin.name
-                })
+                }))
             }
         }
         fields {
@@ -269,18 +270,18 @@ packet_impl! {
 
     (0x00) ClientBound Login DisconnectPacket: Disconnect {
         from_event {
-            | origin: Disconnect | -> DisconnectPacket {
-                DisconnectPacket {
+            | origin: Disconnect | -> TetsuResult<DisconnectPacket> {
+                Ok(DisconnectPacket {
                     reason: match origin.reason.text {
                         Some(t) => t,
                         None => panic!("Unknown reason")
                     }
-                }
+                })
             }
         }
         to_event {
-            | origin: DisconnectPacket | -> Event {
-                Event::Disconnect(Disconnect {
+            | origin: DisconnectPacket | -> TetsuResult<Event> {
+                Ok(Event::Disconnect(Disconnect {
                     reason: Chat {
                         text: Some(origin.reason),
                         translate: None,
@@ -294,7 +295,7 @@ packet_impl! {
                         hover_event: None,
                         extra: None
                     }
-                })
+                }))
             }
         }
         fields {
@@ -304,21 +305,21 @@ packet_impl! {
 
     (0x01) ClientBound Login EncryptionRequestVarIntPacket: EncryptionRequest {
         from_event {
-            | origin: EncryptionRequest | -> EncryptionRequestVarIntPacket {
-                EncryptionRequestVarIntPacket {
+            | origin: EncryptionRequest | -> TetsuResult<EncryptionRequestVarIntPacket> {
+               Ok( EncryptionRequestVarIntPacket {
                     server_id: origin.server_id,
                     public_key: ByteArrayVarInt(origin.public_key.len(), origin.public_key),
                     verify_token: ByteArrayVarInt(origin.verify_token.len(), origin.verify_token)
-                }
+                })
             }
         }
         to_event {
-            | origin: EncryptionRequestVarIntPacket | -> Event {
-                Event::EncryptionRequest(EncryptionRequest {
+            | origin: EncryptionRequestVarIntPacket | -> TetsuResult<Event> {
+                Ok(Event::EncryptionRequest(EncryptionRequest {
                     server_id: origin.server_id,
                     public_key: origin.public_key.1,
                     verify_token: origin.verify_token.1
-                })
+                }))
             }
         }
         fields {
@@ -330,19 +331,19 @@ packet_impl! {
 
     (0x01) ServerBound Login EncryptionResponseVarIntPacket: EncryptionResponse {
         from_event {
-            | origin: EncryptionResponse | -> EncryptionResponseVarIntPacket {
-                EncryptionResponseVarIntPacket {
+            | origin: EncryptionResponse | -> TetsuResult<EncryptionResponseVarIntPacket> {
+                Ok(EncryptionResponseVarIntPacket {
                     shared_secret: ByteArrayVarInt(origin.shared_secret.len(), origin.shared_secret),
                     verify_token: ByteArrayVarInt(origin.verify_token.len(), origin.verify_token)
-                }
+                })
             }
         }
         to_event {
-            | origin: EncryptionResponseVarIntPacket | -> Event {
-                Event::EncryptionResponse(EncryptionResponse {
+            | origin: EncryptionResponseVarIntPacket | -> TetsuResult<Event> {
+                Ok(Event::EncryptionResponse(EncryptionResponse {
                     shared_secret: origin.shared_secret.1,
                     verify_token: origin.verify_token.1
-                })
+                }))
             }
         }
         fields {
@@ -353,19 +354,19 @@ packet_impl! {
 
     (0x02) ClientBound Login LoginSuccessPacket: LoginSuccess {
         from_event {
-            | origin: LoginSuccess | -> LoginSuccessPacket {
-                LoginSuccessPacket {
+            | origin: LoginSuccess | -> TetsuResult<LoginSuccessPacket> {
+                Ok(LoginSuccessPacket {
                     uuid: origin.uuid.to_hyphenated().to_string(),
                     name: origin.name
-                }
+                })
             }
         }
         to_event {
-            | origin: LoginSuccessPacket | -> Event {
-                Event::LoginSuccess(LoginSuccess {
+            | origin: LoginSuccessPacket | -> TetsuResult<Event> {
+                Ok(Event::LoginSuccess(LoginSuccess {
                     uuid: Uuid::parse_str(&origin.uuid[..]).unwrap(),
                     name: origin.name,
-                })
+                }))
             }
         }
         fields {
@@ -376,17 +377,17 @@ packet_impl! {
 
     (0x03) ClientBound Login SetCompressionPacket: SetCompression {
         from_event {
-            | origin: SetCompression | -> SetCompressionPacket {
-                SetCompressionPacket {
+            | origin: SetCompression | -> TetsuResult<SetCompressionPacket> {
+                Ok(SetCompressionPacket {
                     threshold: VarInt(origin.threshold)
-                }
+                })
             }
         }
         to_event {
-            | origin: SetCompressionPacket | -> Event {
-                Event::SetCompression(SetCompression {
+            | origin: SetCompressionPacket | -> TetsuResult<Event> {
+                Ok(Event::SetCompression(SetCompression {
                     threshold: origin.threshold.0
-                })
+                }))
             }
         }
         fields {
@@ -398,17 +399,17 @@ packet_impl! {
 
     (0x00) ClientBound Play KeepAlivePacket: KeepAlive {
         from_event {
-            | origin: KeepAlive | -> KeepAlivePacket {
-                KeepAlivePacket {
+            | origin: KeepAlive | -> TetsuResult<KeepAlivePacket> {
+                Ok(KeepAlivePacket {
                     id: VarInt(origin.id as i32)
-                }
+                })
             }
         }
         to_event {
-            | origin: KeepAlivePacket | -> Event {
-                Event::KeepAlive(KeepAlive {
+            | origin: KeepAlivePacket | -> TetsuResult<Event> {
+                Ok(Event::KeepAlive(KeepAlive {
                     id: origin.id.0 as i64
-                })
+                }))
             }
         }
         fields {
@@ -418,8 +419,8 @@ packet_impl! {
 
     (0x01) ClientBound Play JoinGamePacket: JoinGame {
         from_event {
-            | origin: JoinGame | -> JoinGamePacket {
-                JoinGamePacket {
+            | origin: JoinGame | -> TetsuResult<JoinGamePacket> {
+                Ok(JoinGamePacket {
                     id: origin.id,
                     gamemode: gamemode_to_byte(&origin.gamemode) | (if origin.is_hardcore { 0x80 } else { 0x00 }),
                     dimension: dimension_to_byte(&origin.dimension),
@@ -427,12 +428,12 @@ packet_impl! {
                     max_players: origin.max_players as u8,
                     level_type: origin.world_type,
                     reduced_debug: origin.reduced_debug
-                }
+                })
             }
         }
         to_event {
-            | origin: JoinGamePacket | -> Event {
-                Event::JoinGame(JoinGame {
+            | origin: JoinGamePacket | -> TetsuResult<Event> {
+                Ok(Event::JoinGame(JoinGame {
                     id: origin.id,
                     gamemode: byte_to_gamemode(origin.gamemode),
                     is_hardcore: origin.gamemode & 0x80 == 0x80,
@@ -441,7 +442,7 @@ packet_impl! {
                     max_players: origin.max_players as u32,
                     world_type: origin.level_type,
                     reduced_debug: origin.reduced_debug
-                })
+                }))
             }
         }
         fields {
@@ -457,17 +458,17 @@ packet_impl! {
 
     (0x05) ClientBound Play SpawnPositionPacket: SpawnPosition {
         from_event {
-            | origin: SpawnPosition | -> SpawnPositionPacket {
-                SpawnPositionPacket {
+            | origin: SpawnPosition | -> TetsuResult<SpawnPositionPacket> {
+                Ok(SpawnPositionPacket {
                     location: origin.location.into()
-                }
+                })
             }
         }
         to_event {
-            | origin: SpawnPositionPacket | -> Event {
-                Event::SpawnPosition(SpawnPosition {
+            | origin: SpawnPositionPacket | -> TetsuResult<Event> {
+                Ok(Event::SpawnPosition(SpawnPosition {
                     location: origin.location.into()
-                })
+                }))
             }
         }
         fields {
@@ -477,19 +478,19 @@ packet_impl! {
 
     (0x3F) ClientBound Play PluginMessagePacket: PluginMessage {
         from_event {
-            | origin: PluginMessage | -> PluginMessagePacket {
-                PluginMessagePacket {
-                    channel: origin.channel,
-                    data: origin.data
-                }
-            }
-        }
-        to_event {
-            | origin: PluginMessagePacket | -> Event {
-                Event::PluginMessage(PluginMessage {
+            | origin: PluginMessage | -> TetsuResult<PluginMessagePacket> {
+                Ok(PluginMessagePacket {
                     channel: origin.channel,
                     data: origin.data
                 })
+            }
+        }
+        to_event {
+            | origin: PluginMessagePacket | -> TetsuResult<Event> {
+                Ok(Event::PluginMessage(PluginMessage {
+                    channel: origin.channel,
+                    data: origin.data
+                }))
             }
         }
         fields {
@@ -500,18 +501,18 @@ packet_impl! {
 
     (0x41) ClientBound Play ServerDifficultyUpdatePacket: ServerDifficultyUpdate {
         from_event {
-            | origin: ServerDifficultyUpdate | -> ServerDifficultyUpdatePacket {
-                ServerDifficultyUpdatePacket {
+            | origin: ServerDifficultyUpdate | -> TetsuResult<ServerDifficultyUpdatePacket> {
+                Ok(ServerDifficultyUpdatePacket {
                     difficulty: difficulty_to_byte(&origin.difficulty)
-                }
+                })
             }
         }
         to_event {
-            | origin: ServerDifficultyUpdatePacket | -> Event {
-                Event::ServerDifficultyUpdate(ServerDifficultyUpdate {
+            | origin: ServerDifficultyUpdatePacket | -> TetsuResult<Event> {
+                Ok(Event::ServerDifficultyUpdate(ServerDifficultyUpdate {
                     difficulty: byte_to_difficulty(origin.difficulty),
                     difficulty_locked: false
-                })
+                }))
             }
         }
         fields {

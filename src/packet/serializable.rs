@@ -258,14 +258,14 @@ impl Writable for String {
 
 // ---- Chat ---------------
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 pub struct Action {
     action: String,
     value: String,
 }
 
 /// Information that defines contents/style of a chat message.
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Chat {
     pub text: Option<String>,

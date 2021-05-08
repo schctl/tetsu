@@ -7,11 +7,10 @@ use std::net::TcpStream;
 
 use crate::errors::Error;
 use crate::event;
-use crate::packet;
-use crate::{encryption::DefaultStreamCipher, packet::PacketState};
+use crate::{encryption::DefaultStreamCipher, event::EventState};
 
 /// Encrypted wrapper around a `TcpStream`.
-pub(crate) struct EncryptedTcpStream<const KEY_LEN: usize> {
+pub struct EncryptedTcpStream<const KEY_LEN: usize> {
     /// TcpStream to read from.
     stream: TcpStream,
     /// Cipher algorithm.
@@ -70,6 +69,7 @@ impl<const KEY_LEN: usize> io::Write for EncryptedTcpStream<KEY_LEN> {
         }
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         self.stream.flush()
     }
@@ -80,9 +80,9 @@ pub struct EncryptedConnection {
     /// Internal TCP stream.
     stream: EncryptedTcpStream<16>,
     /// Current connection state (Status/Handshake/Login/Play).
-    state: packet::PacketState,
+    state: event::EventState,
     /// Protocol version used by the connection.
-    protocol_version: event::ProtocolVersion,
+    pub protocol_version: event::ProtocolVersion,
     /// Compression threshold.
     compression_threshold: i32,
 }
@@ -93,7 +93,7 @@ impl EncryptedConnection {
     pub fn new(address: &str, port: u16, protocol_version: event::ProtocolVersion) -> Self {
         Self {
             stream: EncryptedTcpStream::connect(&format!("{}:{}", address, port), None),
-            state: packet::PacketState::Status,
+            state: event::EventState::Status,
             protocol_version,
             compression_threshold: 0,
         }
@@ -101,7 +101,7 @@ impl EncryptedConnection {
 
     /// Set the current state of the the connection.
     #[inline]
-    pub fn set_state(&mut self, state: &PacketState) {
+    pub fn set_state(&mut self, state: &EventState) {
         self.state = *state;
     }
 
@@ -136,7 +136,7 @@ impl EncryptedConnection {
     /// Set the key to encrypt with.
     #[inline]
     pub fn set_cipher(&mut self, key: &[u8; 16]) -> Result<(), Error> {
-        Ok(self.stream.set_cipher(key)?)
+        self.stream.set_cipher(key)
     }
 
     /// Get the address of the internal `TcpStream`.

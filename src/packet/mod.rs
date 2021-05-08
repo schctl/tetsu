@@ -1,30 +1,20 @@
 //! Packet specific tools.
 
-use crate::event::Event;
+use crate::errors::*;
+use crate::event::*;
 
 mod serializable;
 pub use serializable::*;
 
-pub(crate) trait Packet {
+pub(crate) trait Packet: Readable + Writable {
     const ID: i32;
     const DIRECTION: PacketDirection;
-    const STATE: PacketState;
+    const STATE: EventState;
 
-    type Item;
+    type EventType;
 
-    fn into_event(self) -> Event;
-    fn from_event(event: Self::Item) -> Self;
-}
-
-/// Different connection states.
-#[allow(dead_code)]
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum PacketState {
-    Test,
-    Status,
-    Handshake,
-    Login,
-    Play,
+    fn into_event(self) -> TetsuResult<Event>;
+    fn from_event(event: Self::EventType) -> TetsuResult<Self>;
 }
 
 #[allow(dead_code)]
@@ -36,7 +26,7 @@ pub enum PacketDirection {
 
 /// Autoimplement packets for a protocol version.
 #[macro_export]
-macro_rules! packet_impl {
+macro_rules! protocol_impl {
     (
         inherit {
             $(
@@ -59,21 +49,23 @@ macro_rules! packet_impl {
             }
         )*
     ) => {
+        #[allow(unused_imports)]
         use std::io::prelude::*;
 
-        use flate2::Compression;
-        use flate2::{write::ZlibEncoder, read::ZlibDecoder};
+        #[allow(unused_imports)]
+        use flate2::{Compression, {write::ZlibEncoder, read::ZlibDecoder}};
 
         #[allow(unused_imports)]
-        use crate::packet::*;
-        use crate::errors::Error;
+        use crate::{packet::*, errors::*};
 
-        /// Implementation for converting protocol-specific calls to `Event`s.
-        pub fn read_event
-            <T: std::io::Read>
-            (buf: &mut T, state: &PacketState, direction: &PacketDirection, compression_threshold: i32)
-            -> Result<Event, Error>
-        {
+        /// Implementation for converting protocol-specific calls to `Event`s
+        /// for protocol version $version.
+        pub fn read_event<T: std::io::Read>(
+            buf: &mut T,
+            state: &EventState,
+            direction: &PacketDirection,
+            compression_threshold: i32
+        ) -> Result<Event, Error> {
             let mut bytes = vec![0; VarInt::read_from(buf)?.0 as usize];
             buf.read_exact(&mut bytes)?;
 
@@ -96,39 +88,55 @@ macro_rules! packet_impl {
             match (&id, direction, state) {
                 $(
                     (&<$inherit>::ID, &<$inherit>::DIRECTION, &<$inherit>::STATE) => {
-                        Ok(<$inherit>::read_from(&mut bytes)?.into_event())
+                        Ok(<$inherit>::read_from(&mut bytes)?.into_event()?)
                     },
                 )*
                 $(
-                    (&$id, &PacketDirection::$direction, &PacketState::$state) => {
-                        Ok($name::read_from(&mut bytes)?.into_event())
+                    (&$id, &PacketDirection::$direction, &EventState::$state) => {
+                        Ok($name::read_from(&mut bytes)?.into_event()?)
                     },
                 )*
-                _ => panic!("Unknown packet: [{:x}]:{:?}:{:?}", id, direction, state),
+                _ => {
+                    Err(
+                        Error::from(
+                            InvalidValue {
+                                expected: format!("not packet: [{:x}]:{:?}:{:?}", id, direction, state)
+                            }
+                        )
+                    )
+                }
             }
         }
 
         /// Implementation for converting `Event`s to protocol-specific calls.
-        pub fn write_event
-            <T: std::io::Write>
-            (event: Event, buf: &mut T, compression_threshold: i32)
-            -> Result<(), Error>
-        {
+        pub fn write_event<T: std::io::Write>(
+            buf: &mut T,
+            event: Event,
+            compression_threshold: i32
+        ) -> Result<(), Error> {
             let mut _buf = Vec::new();
 
             #[allow(unreachable_patterns)]
             match event {
                 $(
                     Event::$inherit_event(origin) => {
-                        <$inherit>::from_event(origin).write_to(&mut _buf)?
+                        <$inherit>::from_event(origin)?.write_to(&mut _buf)?
                     },
                 )*
                 $(
                     Event::$event_type(origin) => {
-                        $name::from_event(origin).write_to(&mut _buf)?
+                        $name::from_event(origin)?.write_to(&mut _buf)?
                     },
                 )*
-                _ => panic!("Unknown packet"),
+                _ => {
+                    return Err(
+                        Error::from(
+                            InvalidValue {
+                                expected: format!("not event: {:?}", event)
+                            }
+                        )
+                    )
+                }
             }
 
             if compression_threshold <= 0 {
@@ -159,28 +167,27 @@ macro_rules! packet_impl {
             impl Packet for $name {
                 const ID: i32 = $id;
                 const DIRECTION: PacketDirection = PacketDirection::$direction;
-                const STATE: PacketState = PacketState::$state;
+                const STATE: EventState = EventState::$state;
 
-                type Item = $event_type;
+                type EventType = $event_type;
 
                 #[inline]
-                fn into_event(self) -> Event {
+                fn into_event(self) -> TetsuResult<Event> {
                     $to_event(self)
                 }
 
                 #[inline]
-                fn from_event(event: $event_type) -> Self {
+                fn from_event(event: $event_type) -> TetsuResult<Self> {
                     $from_event(event)
                 }
             }
 
             impl Readable for $name {
                 #[inline]
-                #[allow(unused_variables)]
-                fn read_from<T: std::io::Read>(buf: &mut T) -> Result<Self, Error> {
+                fn read_from<T: std::io::Read>(_buf: &mut T) -> Result<Self, Error> {
                     Ok(Self {
                         $(
-                            $field_name: <$field_type>::read_from(buf)?,
+                            $field_name: <$field_type>::read_from(_buf)?,
                         )*
                     })
                 }

@@ -11,6 +11,19 @@ use quick_error::quick_error;
 
 // TODO: impl PoisonError here.
 
+#[derive(Debug)]
+pub struct InvalidValue {
+    pub expected: String,
+}
+
+impl std::error::Error for InvalidValue {}
+
+impl std::fmt::Display for InvalidValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Invalid value received. Expected: {}", self.expected)
+    }
+}
+
 quick_error! {
     #[derive(Debug)]
     pub enum Error {
@@ -32,5 +45,10 @@ quick_error! {
         InvalidKeyLen {
             from(InvalidLength)
         }
+        InvalidValue {
+            from(InvalidValue)
+        }
     }
 }
+
+pub type TetsuResult<T> = Result<T, Error>;
