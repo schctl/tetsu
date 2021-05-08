@@ -1,5 +1,7 @@
 //! Interface to Minecraft's server protocol.
 
+#![warn(missing_docs)]
+
 #[macro_use]
 mod packet;
 mod encryption;

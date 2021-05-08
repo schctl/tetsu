@@ -34,6 +34,7 @@ pub enum PacketDirection {
     ServerBound,
 }
 
+/// Autoimplement packets for a protocol version.
 #[macro_export]
 macro_rules! packet_impl {
     (
@@ -151,7 +152,7 @@ macro_rules! packet_impl {
             #[derive(Debug, PartialEq)]
             pub struct $name {
                 $(
-                    pub $field_name: $field_type,
+                    $field_name: $field_type,
                 )*
             }
 

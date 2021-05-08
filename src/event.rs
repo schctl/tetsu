@@ -19,7 +19,9 @@ use crate::versions;
 #[derive(Serialize_repr, Deserialize_repr, Debug, PartialEq, Eq)]
 #[repr(u16)]
 pub enum ProtocolVersion {
+    /// Server versions 1.8-1.8.9
     V47 = 47,
+    /// Server versions 1.16.4 and 1.16.5
     V754 = 754,
 }
 
@@ -43,6 +45,7 @@ pub enum Event {
 
     KeepAlive(KeepAlive),
     JoinGame(JoinGame),
+    SpawnPosition(SpawnPosition),
     PluginMessage(PluginMessage),
     ServerDifficultyUpdate(ServerDifficultyUpdate),
 }
@@ -150,6 +153,13 @@ pub struct ServerInformation {
     pub version: ServerVersion,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct Position {
+    pub x: i64,
+    pub y: i64,
+    pub z: i64,
+}
+
 // All possible server events -----------
 
 // Status ----------
@@ -225,11 +235,13 @@ pub struct SetCompression {
 
 // Login -----------
 
+/// Sent often to make sure the client is still connected.
 #[derive(Debug)]
 pub struct KeepAlive {
     pub id: i64,
 }
 
+/// Sent when a player joins a server.
 #[derive(Debug)]
 pub struct JoinGame {
     pub id: i32,
@@ -243,11 +255,20 @@ pub struct JoinGame {
 }
 
 #[derive(Debug)]
+pub struct SpawnPosition {
+    pub location: Position,
+}
+
+// TODO: serialize data as `enum` based on namespace.
+
+/// Plugin channel message.
+#[derive(Debug)]
 pub struct PluginMessage {
     pub channel: String,
     pub data: Vec<u8>,
 }
 
+/// Sent when the server changes its difficulty.
 #[derive(Debug)]
 pub struct ServerDifficultyUpdate {
     pub difficulty: Difficulty,

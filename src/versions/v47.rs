@@ -6,62 +6,121 @@ use crate::packet::*;
 
 use uuid::Uuid;
 
-// Conversions ---
+mod internal {
 
-pub fn byte_to_gamemode(byte: UnsignedByte) -> Gamemode {
-    match byte {
-        0 => Gamemode::Survival,
-        1 => Gamemode::Creative,
-        2 => Gamemode::Adventure,
-        3 => Gamemode::Spectator,
-        _ => panic!("Unknown packet"),
+    use super::*;
+
+    use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+    use std::io;
+
+    // Protocol specific types ---
+
+    #[derive(Debug, PartialEq, Eq)]
+    pub struct PositionXZY {
+        pub x: i64,
+        pub z: i64,
+        pub y: i64,
+    }
+
+    impl From<Position> for PositionXZY {
+        fn from(item: Position) -> Self {
+            Self {
+                x: item.x,
+                y: item.y,
+                z: item.z,
+            }
+        }
+    }
+
+    impl From<PositionXZY> for Position {
+        fn from(item: PositionXZY) -> Self {
+            Self {
+                x: item.x,
+                y: item.y,
+                z: item.z,
+            }
+        }
+    }
+
+    impl Readable for PositionXZY {
+        fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, Error> {
+            let val = buf.read_u64::<BigEndian>()?;
+            Ok(Self {
+                x: (val >> 38) as i64,
+                y: ((val >> 26) & 0xFF) as i64,
+                z: (val << 38 >> 38) as i64,
+            })
+        }
+    }
+
+    impl Writable for PositionXZY {
+        fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), Error> {
+            let val = ((self.x as u64 & 0x3FFFFFF) << 38)
+                | ((self.y as u64 & 0xFFF) << 26)
+                | (self.z as u64 & 0x3FFFFFF);
+            Ok(buf.write_u64::<BigEndian>(val)?)
+        }
+    }
+
+    // Conversions ---
+
+    pub fn byte_to_gamemode(byte: UnsignedByte) -> Gamemode {
+        match byte {
+            0 => Gamemode::Survival,
+            1 => Gamemode::Creative,
+            2 => Gamemode::Adventure,
+            3 => Gamemode::Spectator,
+            _ => panic!("Unknown packet"),
+        }
+    }
+
+    pub fn gamemode_to_byte(gamemode: &Gamemode) -> UnsignedByte {
+        match gamemode {
+            Gamemode::Survival => 0,
+            Gamemode::Creative => 1,
+            Gamemode::Adventure => 2,
+            Gamemode::Spectator => 3,
+        }
+    }
+
+    pub fn byte_to_dimension(byte: Byte) -> Dimension {
+        match byte {
+            -1 => Dimension::Nether,
+            0 => Dimension::Overworld,
+            1 => Dimension::End,
+            _ => panic!("Unknown packet"),
+        }
+    }
+
+    pub fn dimension_to_byte(dimension: &Dimension) -> Byte {
+        match dimension {
+            Dimension::Nether => -1,
+            Dimension::Overworld => 0,
+            Dimension::End => 1,
+        }
+    }
+
+    pub fn byte_to_difficulty(byte: UnsignedByte) -> Difficulty {
+        match byte {
+            0 => Difficulty::Peaceful,
+            1 => Difficulty::Easy,
+            2 => Difficulty::Normal,
+            3 => Difficulty::Hard,
+            _ => panic!("Unknown packet"),
+        }
+    }
+
+    pub fn difficulty_to_byte(difficulty: &Difficulty) -> UnsignedByte {
+        match difficulty {
+            Difficulty::Peaceful => 0,
+            Difficulty::Easy => 1,
+            Difficulty::Normal => 2,
+            Difficulty::Hard => 3,
+        }
     }
 }
 
-pub fn gamemode_to_byte(gamemode: &Gamemode) -> UnsignedByte {
-    match gamemode {
-        Gamemode::Survival => 0,
-        Gamemode::Creative => 1,
-        Gamemode::Adventure => 2,
-        Gamemode::Spectator => 3,
-    }
-}
-
-pub fn byte_to_dimension(byte: Byte) -> Dimension {
-    match byte {
-        -1 => Dimension::Nether,
-        0 => Dimension::Overworld,
-        1 => Dimension::End,
-        _ => panic!("Unknown packet"),
-    }
-}
-
-pub fn dimension_to_byte(dimension: &Dimension) -> Byte {
-    match dimension {
-        Dimension::Nether => -1,
-        Dimension::Overworld => 0,
-        Dimension::End => 1,
-    }
-}
-
-pub fn byte_to_difficulty(byte: UnsignedByte) -> Difficulty {
-    match byte {
-        0 => Difficulty::Peaceful,
-        1 => Difficulty::Easy,
-        2 => Difficulty::Normal,
-        3 => Difficulty::Hard,
-        _ => panic!("Unknown packet"),
-    }
-}
-
-pub fn difficulty_to_byte(difficulty: &Difficulty) -> UnsignedByte {
-    match difficulty {
-        Difficulty::Peaceful => 0,
-        Difficulty::Easy => 1,
-        Difficulty::Normal => 2,
-        Difficulty::Hard => 3,
-    }
-}
+use internal::*;
 
 // ---------------
 
@@ -406,6 +465,27 @@ packet_impl! {
             max_players: UnsignedByte,
             level_type: String,
             reduced_debug: bool,
+        }
+    }
+
+    (0x05) ClientBound Play SpawnPositionPacket: SpawnPosition {
+        from_event {
+            | origin: SpawnPosition | -> SpawnPositionPacket {
+                SpawnPositionPacket {
+                    location: origin.location.into()
+                }
+            }
+        }
+        to_event {
+            | origin: SpawnPositionPacket | -> Event {
+                Event::SpawnPosition(SpawnPosition {
+                    location: origin.location.into()
+                })
+            }
+        }
+
+        fields {
+            location: PositionXZY,
         }
     }
 
