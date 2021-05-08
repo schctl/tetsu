@@ -60,8 +60,6 @@ macro_rules! packet_impl {
     ) => {
         use std::io::prelude::*;
 
-        // use colorful::Colorful;
-
         use flate2::Compression;
         use flate2::{write::ZlibEncoder, read::ZlibDecoder};
 

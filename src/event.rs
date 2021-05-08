@@ -4,7 +4,9 @@
 
 use std::time;
 
-use colorful::Colorful;
+#[allow(unused_imports)]
+use log::{debug, error, info, warn};
+
 use serde::{Deserialize, Serialize};
 use serde_repr::*;
 
@@ -40,7 +42,7 @@ pub enum Event {
     KeepAlive(KeepAlive),
     JoinGame(JoinGame),
     PluginMessage(PluginMessage),
-    ServerDifficultyUpdate(ServerDifficultyUpdate)
+    ServerDifficultyUpdate(ServerDifficultyUpdate),
 }
 
 impl Event {
@@ -58,12 +60,7 @@ impl Event {
             ProtocolVersion::V47 => versions::v47::write_event(self, buf, compression_threshold),
             ProtocolVersion::V754 => versions::v754::write_event(self, buf, compression_threshold),
         };
-        println!(
-            "{} {} {}",
-            "Wrote event: Took:".bold().green(),
-            format!("{}", start.elapsed().as_micros()).bold().red(),
-            "us".bold().green()
-        );
+        debug!("Wrote event: Took: {} us", start.elapsed().as_micros(),);
     }
 
     /// Read an event from a buffer.
@@ -89,12 +86,7 @@ impl Event {
                 compression_threshold,
             ),
         };
-        println!(
-            "{} {} {}",
-            "Read event: Took:".bold().green(),
-            format!("{}", start.elapsed().as_micros()).bold().red(),
-            "us".bold().green()
-        );
+        debug!("Read event: Took: {} us", start.elapsed().as_micros(),);
         ev
     }
 }
@@ -250,11 +242,11 @@ pub struct JoinGame {
 #[derive(Debug)]
 pub struct PluginMessage {
     pub channel: String,
-    pub data: Vec<u8>
+    pub data: Vec<u8>,
 }
 
 #[derive(Debug)]
 pub struct ServerDifficultyUpdate {
     pub difficulty: Difficulty,
-    pub difficulty_locked: bool
+    pub difficulty_locked: bool,
 }

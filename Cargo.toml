@@ -28,7 +28,7 @@ openssl = "^0.10"
 # Misc
 ureq = "^2.1"
 flate2 = "^1.0"
-colorful = "0.2.1"
+log = "^0.4"
 
 # Serialization
 uuid = { version = "^0.8", default-features = false }

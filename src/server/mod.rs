@@ -1,11 +1,13 @@
 //! High level server connection.
 
 pub mod connection;
-use colorful::Colorful;
 use connection::EncryptedConnection;
 
 use std::sync::Mutex;
 use std::time;
+
+#[allow(unused_imports)]
+use log::{debug, error, info, warn};
 
 use crate::event::{self, Event};
 use crate::{encryption, packet};
@@ -183,8 +185,8 @@ impl Server {
                     .unwrap()
                     .set_compression_threshold(c.threshold),
                 Event::LoginSuccess(e) => {
-                    println!("Login success at: {}ms!", start.elapsed().as_millis());
-                    println!("{}", format!("{:?}", e).dark_gray());
+                    debug!("Login success at: {} ms!", start.elapsed().as_millis());
+                    debug!("{:?}", e);
                     break;
                 }
                 Event::Disconnect(c) => panic!("Disconnected!: {:?}", c),
