@@ -71,10 +71,13 @@ pub enum EventState {
     Play,
 }
 
+/// Sender of the Event.
 #[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum EventDirection {
+    /// Server sent event.
     ClientBound,
+    /// Client sent event.
     ServerBound,
 }
 
@@ -176,6 +179,7 @@ impl Event {
 
 // Other types --------------------------
 
+/// Gamemode of a level.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Gamemode {
     Survival,
@@ -184,6 +188,7 @@ pub enum Gamemode {
     Spectator,
 }
 
+/// Dimension of a world.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Dimension {
     Nether,
@@ -191,6 +196,7 @@ pub enum Dimension {
     End,
 }
 
+/// Difficulty of a level.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Difficulty {
     Peaceful,
@@ -212,18 +218,20 @@ pub struct ServerDescriptionLong {
     pub text: String,
 }
 
+/// General server player information.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct ServerPlayers {
     pub max: u32,
     pub online: u16,
 }
 
+/// Version the server is running on.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct ServerVersion {
     pub name: String,
     pub protocol: ProtocolVersion,
 }
-
+/// Server information such as version, online players, etc.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct ServerInformation {
     pub description: ServerDescription,
@@ -231,6 +239,7 @@ pub struct ServerInformation {
     pub version: ServerVersion,
 }
 
+/// Coordinates in a world.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Position {
     pub x: i64,
@@ -364,32 +373,36 @@ pub struct SpawnPosition {
     pub location: Position,
 }
 
+/// Change player's selected slot.
 #[derive(Debug, PartialEq, Clone)]
 pub struct HeldItemChange {
     /// Spawn position coordinates.
     pub slot: i8,
 }
 
+/// A single stat value.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Statistic {
     pub name: String,
     pub value: i32,
 }
 
+/// Player statistics.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Statistics {
-    pub values: Vec<Statistic>
+    pub values: Vec<Statistic>,
 }
 
-
+/// Sent to update player abilities.
 #[derive(Debug, PartialEq, Clone)]
 pub struct PlayerAbility {
+    /// "God mode".
     pub invulnerable: bool,
     pub is_flying: bool,
     pub allow_flying: bool,
     pub creative_mode: bool,
     pub flying_speed: f32,
-    pub walking_speed: f32
+    pub walking_speed: f32,
 }
 
 // TODO: serialize data as `enum` based on namespace.

@@ -66,14 +66,14 @@ mod internal {
     #[derive(Debug, PartialEq)]
     pub struct StatisticString {
         name: String,
-        value: VarInt
+        value: VarInt,
     }
 
     impl From<Statistic> for StatisticString {
         fn from(item: Statistic) -> Self {
             Self {
                 name: item.name,
-                value: VarInt(item.value)
+                value: VarInt(item.value),
             }
         }
     }
@@ -82,7 +82,7 @@ mod internal {
         fn from(item: StatisticString) -> Self {
             Self {
                 name: item.name,
-                value: item.value.0
+                value: item.value.0,
             }
         }
     }
@@ -91,7 +91,7 @@ mod internal {
         fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
             let name = String::read_from(buf)?;
             let value = VarInt::read_from(buf)?;
-            Ok(Self {name, value})
+            Ok(Self { name, value })
         }
     }
 
@@ -560,10 +560,10 @@ protocol_impl! {
         from_event {
             | origin: PlayerAbility | -> TetsuResult<PlayerAbilityPacket> {
                 Ok(PlayerAbilityPacket {
-                    flags: 0x00 | (if origin.invulnerable { 0x01 } else { 0x00 })
-                                | (if origin.is_flying { 0x02 } else { 0x00 })
-                                | (if origin.allow_flying { 0x04 } else { 0x00 })
-                                | (if origin.creative_mode { 0x08 } else { 0x00 }),
+                    flags: (if origin.invulnerable { 0x01 } else { 0x00 })
+                         | (if origin.is_flying { 0x02 } else { 0x00 })
+                         | (if origin.allow_flying { 0x04 } else { 0x00 })
+                         | (if origin.creative_mode { 0x08 } else { 0x00 }),
                     flying_speed: origin.flying_speed,
                     walking_speed: origin.walking_speed
                 })

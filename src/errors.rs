@@ -1,3 +1,5 @@
+//! All possible errors.
+
 use std::io;
 use std::string;
 use std::sync::{MutexGuard, PoisonError};
@@ -73,6 +75,7 @@ impl From<InvalidValue> for Error {
     }
 }
 
+/// Error while reading/writing from a connection.
 #[derive(Debug)]
 pub enum ConnectionError<'a, T> {
     LockError(PoisonError<MutexGuard<'a, T>>),
