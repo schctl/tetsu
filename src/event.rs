@@ -85,9 +85,10 @@ Non exhaustive list of all events that can be sent and received.
 
 # Examples
 ```no_run
+use std::io::Cursor;
 use tetsu::event::*;
 
-let mut buf = ...;
+let mut buf = Cursor::new(Vec::new());
 
 // ...
 
@@ -97,12 +98,13 @@ let event = Event::read_from(
     &EventDirection::ClientBound,
     &ProtocolVersion::V47,
     0,
-);
+)
+.unwrap();
 
 match event {
-    Event::Pong(e) => { ... },
-    Event::StatusResponse(e) => { ... },
-    _ => { ... }
+    Event::Pong(e) => {},
+    Event::StatusResponse(e) => {},
+    _ => {}
 }
 ```
 */
