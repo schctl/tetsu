@@ -16,7 +16,7 @@ mod internal {
 
     // Protocol specific types ---
 
-    #[derive(Debug, PartialEq, Eq)]
+    #[derive(Debug, PartialEq)]
     pub struct PositionXZY {
         pub x: i64,
         pub z: i64,
@@ -60,6 +60,45 @@ mod internal {
                 | ((self.y as u64 & 0xFFF) << 26)
                 | (self.z as u64 & 0x3FFFFFF);
             Ok(buf.write_u64::<BigEndian>(val)?)
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    pub struct StatisticString {
+        name: String,
+        value: VarInt
+    }
+
+    impl From<Statistic> for StatisticString {
+        fn from(item: Statistic) -> Self {
+            Self {
+                name: item.name,
+                value: VarInt(item.value)
+            }
+        }
+    }
+
+    impl From<StatisticString> for Statistic {
+        fn from(item: StatisticString) -> Self {
+            Self {
+                name: item.name,
+                value: item.value.0
+            }
+        }
+    }
+
+    impl Readable for StatisticString {
+        fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
+            let name = String::read_from(buf)?;
+            let value = VarInt::read_from(buf)?;
+            Ok(Self {name, value})
+        }
+    }
+
+    impl Writable for StatisticString {
+        fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
+            self.name.write_to(buf)?;
+            self.value.write_to(buf)
         }
     }
 
@@ -473,6 +512,79 @@ protocol_impl! {
         }
         fields {
             location: PositionXZY,
+        }
+    }
+
+    (0x09) ClientBound Play HeldItemChangePacket: HeldItemChange {
+        from_event {
+            | origin: HeldItemChange | -> TetsuResult<HeldItemChangePacket> {
+                Ok(HeldItemChangePacket {
+                    slot: origin.slot
+                })
+            }
+        }
+        to_event {
+            | origin: HeldItemChangePacket | -> TetsuResult<Event> {
+                Ok(Event::HeldItemChange(HeldItemChange {
+                    slot: origin.slot
+                }))
+            }
+        }
+        fields {
+            slot: Byte,
+        }
+    }
+
+    (0x37) ClientBound Play StatisticsPacket: Statistics {
+        from_event {
+            | origin: Statistics | -> TetsuResult<StatisticsPacket> {
+                let values: Vec<StatisticString> = origin.values.into_iter().map(|s| -> StatisticString { s.into() }).collect();
+                Ok(StatisticsPacket {
+                    values: GenericArray::from(values)
+                })
+            }
+        }
+        to_event {
+            | origin: StatisticsPacket | -> TetsuResult<Event> {
+                Ok(Event::Statistics(Statistics {
+                    values: origin.values.1.into_iter().map(|s| -> Statistic { s.into() }).collect()
+                }))
+            }
+        }
+        fields {
+            values: GenericArray<VarInt, StatisticString>,
+        }
+    }
+
+    (0x39) ClientBound Play PlayerAbilityPacket: PlayerAbility {
+        from_event {
+            | origin: PlayerAbility | -> TetsuResult<PlayerAbilityPacket> {
+                Ok(PlayerAbilityPacket {
+                    flags: 0x00 | (if origin.invulnerable { 0x01 } else { 0x00 })
+                                | (if origin.is_flying { 0x02 } else { 0x00 })
+                                | (if origin.allow_flying { 0x04 } else { 0x00 })
+                                | (if origin.creative_mode { 0x08 } else { 0x00 }),
+                    flying_speed: origin.flying_speed,
+                    walking_speed: origin.walking_speed
+                })
+            }
+        }
+        to_event {
+            | origin: PlayerAbilityPacket | -> TetsuResult<Event> {
+                Ok(Event::PlayerAbility(PlayerAbility {
+                    invulnerable: origin.flags & 0x01 == 0x01,
+                    is_flying: origin.flags & 0x02 == 0x02,
+                    allow_flying: origin.flags & 0x04 == 0x04,
+                    creative_mode: origin.flags & 0x08 == 0x08,
+                    flying_speed: origin.flying_speed,
+                    walking_speed: origin.walking_speed
+                }))
+            }
+        }
+        fields {
+            flags: Byte,
+            flying_speed: Float,
+            walking_speed: Float,
         }
     }
 

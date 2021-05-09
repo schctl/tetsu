@@ -78,7 +78,7 @@ macro_rules! protocol_impl {
 
             let id = VarInt::read_from(&mut bytes)?.0;
 
-            #[allow(unreachable_pattern)]
+            #[allow(unreachable_patterns)]
             match (&id, direction, state) {
                 $(
                     (&<$inherit>::ID, &<$inherit>::DIRECTION, &<$inherit>::STATE) => {

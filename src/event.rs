@@ -107,7 +107,7 @@ match event {
 ```
 */
 #[non_exhaustive]
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Event {
     Ping(Ping),
     Pong(Pong),
@@ -126,6 +126,9 @@ pub enum Event {
     KeepAlive(KeepAlive),
     JoinGame(JoinGame),
     SpawnPosition(SpawnPosition),
+    HeldItemChange(HeldItemChange),
+    Statistics(Statistics),
+    PlayerAbility(PlayerAbility),
     PluginMessage(PluginMessage),
     ServerDifficultyUpdate(ServerDifficultyUpdate),
 }
@@ -173,7 +176,7 @@ impl Event {
 
 // Other types --------------------------
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Gamemode {
     Survival,
     Creative,
@@ -181,14 +184,14 @@ pub enum Gamemode {
     Spectator,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Dimension {
     Nether,
     Overworld,
     End,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Difficulty {
     Peaceful,
     Easy,
@@ -228,7 +231,7 @@ pub struct ServerInformation {
     pub version: ServerVersion,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Position {
     pub x: i64,
     pub y: i64,
@@ -240,25 +243,25 @@ pub struct Position {
 // Status ----------
 
 /// Ping the server to make sure its alive.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Ping {
     /// Verify payload.
     pub payload: i64,
 }
 
 /// Verify server response.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Pong {
     /// Verify payload.
     pub payload: i64,
 }
 
 /// Request for server information.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct StatusRequest {}
 
 /// Server information response to `StatusRequest`.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct StatusResponse {
     /// Server information.
     pub response: ServerInformation,
@@ -267,7 +270,7 @@ pub struct StatusResponse {
 // Handshake -------
 
 /// Handshake packet. This begins the server connection.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Handshake {
     /// Server IP string.
     pub server_address: String,
@@ -280,14 +283,14 @@ pub struct Handshake {
 // Login -----------
 
 /// Start the login process.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct LoginStart {
     /// Username to log in with.
     pub name: String,
 }
 
 /// Client disconnect reason.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Disconnect {
     /// Reason field.
     pub reason: Chat,
@@ -295,7 +298,7 @@ pub struct Disconnect {
 
 /// Encryption request to generate a shared key. Note that
 /// none of the fields are encrypted.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct EncryptionRequest {
     /// Server ID. Usually empty.
     pub server_id: String,
@@ -307,7 +310,7 @@ pub struct EncryptionRequest {
 }
 
 /// Send the shared key.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct EncryptionResponse {
     /// Shared secret. Key used to encrypt all packets with.
     pub shared_secret: Vec<u8>,
@@ -317,7 +320,7 @@ pub struct EncryptionResponse {
 }
 
 /// Check if the login process succeeded.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct LoginSuccess {
     /// UUID of the user profile logged in.
     pub uuid: Uuid,
@@ -326,7 +329,7 @@ pub struct LoginSuccess {
 }
 
 /// Set the connection compression.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct SetCompression {
     /// Maximum packet size to need compression.
     pub threshold: i32,
@@ -335,14 +338,14 @@ pub struct SetCompression {
 // Play ------------
 
 /// Sent often to make sure the client is still connected.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct KeepAlive {
     /// Payload.
     pub id: i64,
 }
 
 /// Sent when a player joins a server.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct JoinGame {
     pub id: i32,
     pub gamemode: Gamemode,
@@ -355,16 +358,44 @@ pub struct JoinGame {
 }
 
 /// Spawn position of a player.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct SpawnPosition {
     /// Spawn position coordinates.
     pub location: Position,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct HeldItemChange {
+    /// Spawn position coordinates.
+    pub slot: i8,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Statistic {
+    pub name: String,
+    pub value: i32,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Statistics {
+    pub values: Vec<Statistic>
+}
+
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct PlayerAbility {
+    pub invulnerable: bool,
+    pub is_flying: bool,
+    pub allow_flying: bool,
+    pub creative_mode: bool,
+    pub flying_speed: f32,
+    pub walking_speed: f32
+}
+
 // TODO: serialize data as `enum` based on namespace.
 
 /// Plugin channel message.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct PluginMessage {
     /// Channel name.
     pub channel: String,
@@ -373,7 +404,7 @@ pub struct PluginMessage {
 }
 
 /// Sent when the server changes its difficulty.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ServerDifficultyUpdate {
     pub difficulty: Difficulty,
     pub difficulty_locked: bool,
