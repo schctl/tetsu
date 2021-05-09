@@ -120,6 +120,7 @@ impl EncryptedConnection {
         Event::read_from(
             &mut self.stream,
             &self.state,
+            &EventDirection::ClientBound,
             &self.protocol_version,
             self.compression_threshold,
         )
@@ -131,6 +132,7 @@ impl EncryptedConnection {
         _event.write_to(
             &mut self.stream,
             &self.state,
+            &EventDirection::ServerBound,
             &self.protocol_version,
             self.compression_threshold,
         )

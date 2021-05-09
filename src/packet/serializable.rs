@@ -137,9 +137,6 @@ impl Writable for Int {
 
 // ---- Unsigned Int -------
 
-// This type isn't actually used
-// but is implemented anyway.
-
 pub type UnsignedInt = u32;
 
 impl Readable for UnsignedInt {
@@ -250,8 +247,7 @@ impl Writable for String {
     #[inline]
     fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         let bytes = self.as_bytes();
-        let x = VarInt(bytes.len() as i32);
-        x.write_to(buf)?;
+        VarInt(bytes.len() as i32).write_to(buf)?;
         Ok(buf.write_all(bytes)?)
     }
 }
@@ -284,16 +280,14 @@ pub struct Chat {
 impl Readable for Chat {
     #[inline]
     fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
-        let val = String::read_from(buf)?;
-        Ok(serde_json::from_str(&val[..])?)
+        Ok(serde_json::from_str(&String::read_from(buf)?[..])?)
     }
 }
 
 impl Writable for Chat {
     #[inline]
     fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
-        let val = serde_json::to_string(&self).unwrap();
-        val.write_to(buf)
+        serde_json::to_string(&self)?.write_to(buf)
     }
 }
 
@@ -422,8 +416,10 @@ pub struct GenericArray<L: Into<usize> + From<usize> + Readable + Writable, C: R
     PhantomData<L>,
 );
 
-impl<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable> Readable
-    for GenericArray<L, C>
+impl<L, C> Readable for GenericArray<L, C>
+where
+    L: Into<usize> + From<usize> + Readable + Writable,
+    C: Readable + Writable,
 {
     #[inline]
     fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
@@ -436,8 +432,10 @@ impl<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable>
     }
 }
 
-impl<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable> Writable
-    for GenericArray<L, C>
+impl<L, C> Writable for GenericArray<L, C>
+where
+    L: Into<usize> + From<usize> + Readable + Writable,
+    C: Readable + Writable,
 {
     #[inline]
     fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
@@ -450,8 +448,10 @@ impl<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable>
     }
 }
 
-impl<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable> From<Vec<C>>
-    for GenericArray<L, C>
+impl<L, C> From<Vec<C>> for GenericArray<L, C>
+where
+    L: Into<usize> + From<usize> + Readable + Writable,
+    C: Readable + Writable,
 {
     #[inline]
     fn from(item: Vec<C>) -> Self {

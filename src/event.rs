@@ -1,6 +1,42 @@
-//! Protocol events. The client/server communicates by sending
-//! and receiving events. These act as a sort of common interface
-//! to all the major Minecraft versions' packet implementations.
+/*!
+Protocol events. The client/server communicates by sending
+and receiving events. These act as a sort of common interface
+to all the major Minecraft versions' packet implementations.
+
+# Examples
+```
+use std::io::Cursor;
+use tetsu::event::*;
+
+let mut connection = Cursor::new(Vec::new());
+
+let write_handshake = Event::Handshake(Handshake {
+    server_address: "127.0.0.1".to_owned(),
+    server_port: 25565,
+    next_state: EventState::Login,
+});
+write_handshake.clone().write_to(
+    &mut connection,
+    &EventState::Handshake,
+    &EventDirection::ServerBound,
+    &ProtocolVersion::V47,
+    0,
+);
+
+connection.set_position(0);
+
+let read_handshake = Event::read_from(
+    &mut connection,
+    &EventState::Handshake,
+    &EventDirection::ServerBound,
+    &ProtocolVersion::V47,
+    0,
+)
+.unwrap();
+
+assert_eq!(write_handshake, read_handshake)
+```
+*/
 
 use std::time;
 
@@ -10,7 +46,7 @@ use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_repr::*;
 
-use crate::errors::TetsuResult;
+use crate::errors::*;
 use crate::packet::*;
 use crate::versions;
 
@@ -37,29 +73,37 @@ pub enum EventState {
     Play,
 }
 
+#[allow(dead_code)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum EventDirection {
+    ClientBound,
+    ServerBound,
+}
+
 /**
-All possible server events.
+Non exhaustive list of all events that can be sent and received.
 
 # Examples
-```
-use std::io::Cursor;
-use tetsu::event::{Event, Handshake, ProtocolVersion, EventState};
+```no_run
+use tetsu::event::*;
 
-let mut connection = Cursor::new(Vec::new());
+let mut buf = ...;
 
-let write_handshake = Event::Handshake(Handshake {
-    server_address: "127.0.0.1".to_owned(),
-    server_port: 25565,
-    next_state: EventState::Login
-});
-write_handshake.clone().write_to(&mut connection, &EventState::Login, &ProtocolVersion::V47, 0);
+// ...
 
-connection.set_position(0);
-println!("{:?}", connection);
+let event = Event::read_from(
+    &mut buf,
+    &EventState::Status,
+    &EventDirection::ClientBound,
+    &ProtocolVersion::V47,
+    0,
+);
 
-let read_handshake = Event::read_from(&mut connection, &EventState::Login, &ProtocolVersion::V47, 0).unwrap();
-
-assert_eq!(write_handshake, read_handshake)
+match event {
+    Event::Pong(e) => { ... },
+    Event::StatusResponse(e) => { ... },
+    _ => { ... }
+}
 ```
 */
 #[allow(missing_docs)]
@@ -93,14 +137,19 @@ impl Event {
     pub fn write_to<T: std::io::Write>(
         self,
         buf: &mut T,
-        _state: &EventState,
+        state: &EventState,
+        direction: &EventDirection,
         protocol: &ProtocolVersion,
         compression_threshold: i32,
     ) -> TetsuResult<()> {
         let start = time::Instant::now();
         match protocol {
-            ProtocolVersion::V47 => versions::v47::write_event(buf, self, compression_threshold),
-            ProtocolVersion::V754 => versions::v754::write_event(buf, self, compression_threshold),
+            ProtocolVersion::V47 => {
+                versions::v47::write_event(buf, self, state, direction, compression_threshold)
+            }
+            ProtocolVersion::V754 => {
+                versions::v754::write_event(buf, self, state, direction, compression_threshold)
+            }
         }?;
         debug!("Wrote event: Took: {} us", start.elapsed().as_micros());
         Ok(())
@@ -111,23 +160,18 @@ impl Event {
     pub fn read_from<T: std::io::Read>(
         buf: &mut T,
         state: &EventState,
+        direction: &EventDirection,
         protocol: &ProtocolVersion,
         compression_threshold: i32,
     ) -> TetsuResult<Self> {
         let start = time::Instant::now();
         let ev = match protocol {
-            ProtocolVersion::V47 => versions::v47::read_event(
-                buf,
-                state,
-                &PacketDirection::ClientBound,
-                compression_threshold,
-            ),
-            ProtocolVersion::V754 => versions::v754::read_event(
-                buf,
-                state,
-                &PacketDirection::ClientBound,
-                compression_threshold,
-            ),
+            ProtocolVersion::V47 => {
+                versions::v47::read_event(buf, state, direction, compression_threshold)
+            }
+            ProtocolVersion::V754 => {
+                versions::v754::read_event(buf, state, direction, compression_threshold)
+            }
         };
         debug!("Read event: Took: {} us", start.elapsed().as_micros());
         ev

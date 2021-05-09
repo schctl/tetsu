@@ -1,6 +1,10 @@
 # Tetsu
 
-`Tetsu` is a prototype interface to Minecraft's [server protocols](https://wiki.vg/Protocol) written in Rust. It allows for server/client communication across multiple versions using a common API. Currently supports logging into server versions `1.8.*` and `1.16.[4/5]`.
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/schctl/tetsu/Test?style=for-the-badge)
+![Crates.io](https://img.shields.io/crates/v/tetsu?style=for-the-badge)
+![Crates.io](https://img.shields.io/crates/l/tetsu?style=for-the-badge)
+
+`Tetsu` is a version agnostic implementation of Minecraft's [server protocols](https://wiki.vg/Protocol) written in Rust. Currently supports logging into server versions `1.8.*` and `1.16.[4/5]`.
 
 ## Plans
 

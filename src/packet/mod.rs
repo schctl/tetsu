@@ -8,20 +8,13 @@ pub use serializable::*;
 
 pub(crate) trait Packet: Readable + Writable {
     const ID: i32;
-    const DIRECTION: PacketDirection;
+    const DIRECTION: EventDirection;
     const STATE: EventState;
 
     type EventType;
 
     fn into_event(self) -> TetsuResult<Event>;
     fn from_event(event: Self::EventType) -> TetsuResult<Self>;
-}
-
-#[allow(dead_code)]
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum PacketDirection {
-    ClientBound,
-    ServerBound,
 }
 
 /// Autoimplement packets for a protocol version.
@@ -63,7 +56,7 @@ macro_rules! protocol_impl {
         pub fn read_event<T: std::io::Read>(
             buf: &mut T,
             state: &EventState,
-            direction: &PacketDirection,
+            direction: &EventDirection,
             compression_threshold: i32
         ) -> TetsuResult<Event> {
             let mut bytes = vec![0; VarInt::read_from(buf)?.0 as usize];
@@ -92,7 +85,7 @@ macro_rules! protocol_impl {
                     },
                 )*
                 $(
-                    (&$id, &PacketDirection::$direction, &EventState::$state) => {
+                    (&$id, &EventDirection::$direction, &EventState::$state) => {
                         Ok($name::read_from(&mut bytes)?.into_event()?)
                     },
                 )*
@@ -112,6 +105,8 @@ macro_rules! protocol_impl {
         pub fn write_event<T: std::io::Write>(
             buf: &mut T,
             event: Event,
+            _state: &EventState,
+            _direction: &EventDirection,
             compression_threshold: i32
         ) -> TetsuResult<()> {
             let mut _buf = Vec::new();
@@ -166,7 +161,7 @@ macro_rules! protocol_impl {
 
             impl Packet for $name {
                 const ID: i32 = $id;
-                const DIRECTION: PacketDirection = PacketDirection::$direction;
+                const DIRECTION: EventDirection = EventDirection::$direction;
                 const STATE: EventState = EventState::$state;
 
                 type EventType = $event_type;
