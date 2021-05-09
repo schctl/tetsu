@@ -18,13 +18,12 @@ codegen-units = 1
 # Crypto
 aes = "^0.7"
 cfb8 = "^0.7"
-openssl = { version = "0.10" }
+openssl = "^0.10"
 
 # Misc
-ureq = "^2.1"
-quick-error = "^2.0"
-flate2 = "^1.0"
 log = "^0.4"
+ureq = "^2.1"
+flate2 = "^1.0"
 
 # Serialization
 byteorder = "^1.4"

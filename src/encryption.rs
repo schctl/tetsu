@@ -1,6 +1,6 @@
 //! Tools to encrypt packet data sent over the network.
 
-use crate::errors::Error;
+use crate::errors::TetsuResult;
 
 use openssl::encrypt::Encrypter;
 use openssl::pkey::{PKey, Public};
@@ -9,12 +9,11 @@ use openssl::rsa::{Padding, Rsa};
 pub use openssl::sha::Sha1;
 
 use aes::Aes128;
-use cfb8::{
-    cipher::{AsyncStreamCipher, NewCipher},
-    Cfb8,
-};
+pub use cfb8::cipher::{AsyncStreamCipher, NewCipher};
+use cfb8::Cfb8;
 
 pub type PublicKey = PKey<Public>;
+pub type DefaultStreamCipher = Cfb8<Aes128>;
 
 /// Fills `key` with random bytes.
 #[inline]
@@ -24,11 +23,11 @@ pub fn generate_key(key: &mut [u8]) {
 
 /// Return a PublicKey object from a DER encoded RSA key.
 #[inline]
-pub fn pkey_from_der(key: &[u8]) -> Result<PublicKey, Error> {
+pub fn pkey_from_der(key: &[u8]) -> TetsuResult<PublicKey> {
     Ok(PKey::from_rsa(Rsa::public_key_from_der(key)?)?)
 }
 
-/// Encrypt some data with an RSA public key.
+/// Wrapper around an RSA public key.
 pub struct RsaEncrypter<'a> {
     /// Internal RSA encryptor.
     encrypter: Encrypter<'a>,
@@ -37,14 +36,14 @@ pub struct RsaEncrypter<'a> {
 impl<'a> RsaEncrypter<'a> {
     /// Returns a new RSA encryptor from a Public key.
     #[inline]
-    pub fn new(key: &'a PublicKey) -> Result<Self, Error> {
+    pub fn new(key: &'a PublicKey) -> TetsuResult<Self> {
         let mut encrypter = Encrypter::new(&key)?;
         encrypter.set_rsa_padding(Padding::PKCS1)?;
         Ok(Self { encrypter })
     }
 
     /// Encrypt a buffer with an RSA key.
-    pub fn encrypt(&self, buf: &[u8]) -> Result<Vec<u8>, Error> {
+    pub fn encrypt(&self, buf: &[u8]) -> TetsuResult<Vec<u8>> {
         // Create an output buffer
         let _buffer_len = self.encrypter.encrypt_len(&buf)?;
         let mut encrypted_buf = vec![0; _buffer_len];
@@ -52,34 +51,6 @@ impl<'a> RsaEncrypter<'a> {
         let _encrypted_len = self.encrypter.encrypt(&buf, &mut encrypted_buf)?;
         encrypted_buf.truncate(_encrypted_len);
         Ok(encrypted_buf)
-    }
-}
-
-/// Default Minecraft stream cipher. Uses AES/CFB8.
-pub struct DefaultStreamCipher<const KEY_LEN: usize> {
-    /// Internal CFB8 cipher.
-    cipher: Cfb8<Aes128>,
-}
-
-impl<const KEY_LEN: usize> DefaultStreamCipher<KEY_LEN> {
-    /// Constructs a new stream cipher
-    #[inline]
-    pub fn new(key: [u8; KEY_LEN]) -> Result<Self, Error> {
-        Ok(Self {
-            cipher: Cfb8::new_from_slices(&(key), &(key))?,
-        })
-    }
-
-    /// Decrypt data using the internal cipher.
-    #[inline]
-    pub fn decrypt(&mut self, data: &mut [u8]) {
-        self.cipher.decrypt(data)
-    }
-
-    /// Encrypt data using the internal cipher.
-    #[inline]
-    pub fn encrypt(&mut self, data: &mut [u8]) {
-        self.cipher.encrypt(data)
     }
 }
 
@@ -96,7 +67,7 @@ pub fn hexdigest(hasher: Sha1) -> String {
 
     let negative = (hash[0] & 0x80) == 0x80;
 
-    // Treat hash as a numer and calculate 2's complement
+    // Treat hash as a number and calculate 2's complement
     if negative {
         let mut carry = true;
         for i in (0..hash.len()).rev() {

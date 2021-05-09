@@ -2,7 +2,7 @@
 //! The type name indicates the type that is sent/to be sent.
 //! It's methods return/write the equivalent type.
 
-use crate::errors;
+use crate::errors::*;
 
 use std::convert::From;
 use std::io::{self, prelude::*};
@@ -15,11 +15,11 @@ pub use nbt::Blob as NbtBlob;
 pub use uuid::Uuid;
 
 pub trait Readable: Sized {
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error>;
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self>;
 }
 
 pub trait Writable: Sized {
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error>;
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()>;
 }
 
 // -----------------------------------
@@ -33,14 +33,14 @@ pub type Bool = bool;
 
 impl Readable for Bool {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         Ok(buf.read_u8()? == 0x01)
     }
 }
 
 impl Writable for Bool {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         Ok(buf.write_u8(if *self { 0x01 } else { 0x00 })?)
     }
 }
@@ -51,14 +51,14 @@ pub type Byte = i8;
 
 impl Readable for Byte {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         Ok(buf.read_i8()?)
     }
 }
 
 impl Writable for Byte {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         Ok(buf.write_i8(*self)?)
     }
 }
@@ -69,14 +69,14 @@ pub type UnsignedByte = u8;
 
 impl Readable for UnsignedByte {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         Ok(buf.read_u8()?)
     }
 }
 
 impl Writable for UnsignedByte {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         Ok(buf.write_u8(*self)?)
     }
 }
@@ -87,14 +87,14 @@ pub type Short = i16;
 
 impl Readable for Short {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         Ok(buf.read_i16::<BigEndian>()?)
     }
 }
 
 impl Writable for Short {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         Ok(buf.write_i16::<BigEndian>(*self)?)
     }
 }
@@ -105,14 +105,14 @@ pub type UnsignedShort = u16;
 
 impl Readable for UnsignedShort {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         Ok(buf.read_u16::<BigEndian>()?)
     }
 }
 
 impl Writable for UnsignedShort {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         Ok(buf.write_u16::<BigEndian>(*self)?)
     }
 }
@@ -123,14 +123,14 @@ pub type Int = i32;
 
 impl Readable for Int {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         Ok(buf.read_i32::<BigEndian>()?)
     }
 }
 
 impl Writable for Int {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         Ok(buf.write_i32::<BigEndian>(*self)?)
     }
 }
@@ -144,14 +144,14 @@ pub type UnsignedInt = u32;
 
 impl Readable for UnsignedInt {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         Ok(buf.read_u32::<BigEndian>()?)
     }
 }
 
 impl Writable for UnsignedInt {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         Ok(buf.write_u32::<BigEndian>(*self)?)
     }
 }
@@ -165,14 +165,14 @@ pub type Long = i64;
 
 impl Readable for Long {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         Ok(buf.read_i64::<BigEndian>()?)
     }
 }
 
 impl Writable for Long {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         Ok(buf.write_i64::<BigEndian>(*self)?)
     }
 }
@@ -186,14 +186,14 @@ pub type UnsignedLong = u64;
 
 impl Readable for UnsignedLong {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         Ok(buf.read_u64::<BigEndian>()?)
     }
 }
 
 impl Writable for UnsignedLong {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         Ok(buf.write_u64::<BigEndian>(*self)?)
     }
 }
@@ -204,14 +204,14 @@ pub type Float = f32;
 
 impl Readable for Float {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         Ok(buf.read_f32::<BigEndian>()?)
     }
 }
 
 impl Writable for Float {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         Ok(buf.write_f32::<BigEndian>(*self)?)
     }
 }
@@ -222,14 +222,14 @@ pub type Double = f64;
 
 impl Readable for Double {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         Ok(buf.read_f64::<BigEndian>()?)
     }
 }
 
 impl Writable for Double {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         Ok(buf.write_f64::<BigEndian>(*self)?)
     }
 }
@@ -238,7 +238,7 @@ impl Writable for Double {
 
 impl Readable for String {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         let len = VarInt::read_from(buf)?.0;
         let mut bytes = Vec::<u8>::new();
         buf.take(len as u64).read_to_end(&mut bytes)?;
@@ -248,7 +248,7 @@ impl Readable for String {
 
 impl Writable for String {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         let bytes = self.as_bytes();
         let x = VarInt(bytes.len() as i32);
         x.write_to(buf)?;
@@ -283,7 +283,7 @@ pub struct Chat {
 
 impl Readable for Chat {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         let val = String::read_from(buf)?;
         Ok(serde_json::from_str(&val[..])?)
     }
@@ -291,7 +291,7 @@ impl Readable for Chat {
 
 impl Writable for Chat {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         let val = serde_json::to_string(&self).unwrap();
         val.write_to(buf)
     }
@@ -308,7 +308,7 @@ pub struct VarInt(pub i32);
 
 impl Readable for VarInt {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         let mut res: u32 = 0;
         let mut byte;
 
@@ -328,7 +328,7 @@ impl Readable for VarInt {
 
 impl Writable for VarInt {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         let mut val = self.0 as u32;
 
         loop {
@@ -378,14 +378,14 @@ impl From<VarInt> for usize {
 
 impl Readable for Uuid {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         Ok(Self::from_u128(buf.read_u128::<BigEndian>()?))
     }
 }
 
 impl Writable for Uuid {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         Ok(buf.write_u128::<BigEndian>(self.as_u128())?)
     }
 }
@@ -397,7 +397,7 @@ pub struct ByteArrayVarInt(pub usize, pub Vec<u8>);
 
 impl Readable for ByteArrayVarInt {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         let len = VarInt::read_from(buf)?.0 as usize;
         let mut data = Vec::with_capacity(len);
         buf.take(len as u64).read_to_end(&mut data)?;
@@ -407,7 +407,7 @@ impl Readable for ByteArrayVarInt {
 
 impl Writable for ByteArrayVarInt {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         VarInt(self.1.len() as i32).write_to(buf)?;
         Ok(buf.write_all(&self.1[..])?)
     }
@@ -426,7 +426,7 @@ impl<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable>
     for GenericArray<L, C>
 {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         let len = L::read_from(buf)?.into();
         let mut data = Vec::with_capacity(len);
         for _ in 0..len {
@@ -440,7 +440,7 @@ impl<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable>
     for GenericArray<L, C>
 {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         let len: L = self.1.len().into();
         len.write_to(buf)?;
         for i in &self.1 {
@@ -463,7 +463,7 @@ impl<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable>
 
 impl Readable for Vec<UnsignedByte> {
     #[inline]
-    fn read_from<R: io::Read>(buf: &mut R) -> Result<Self, errors::Error> {
+    fn read_from<R: io::Read>(buf: &mut R) -> TetsuResult<Self> {
         let mut v = Vec::new();
         buf.read_to_end(&mut v)?;
         Ok(v)
@@ -472,7 +472,7 @@ impl Readable for Vec<UnsignedByte> {
 
 impl Writable for Vec<UnsignedByte> {
     #[inline]
-    fn write_to<W: io::Write>(&self, buf: &mut W) -> Result<(), errors::Error> {
+    fn write_to<W: io::Write>(&self, buf: &mut W) -> TetsuResult<()> {
         Ok(buf.write_all(&self[..])?)
     }
 }
@@ -481,14 +481,14 @@ impl Writable for Vec<UnsignedByte> {
 
 impl Readable for NbtBlob {
     #[inline]
-    fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, errors::Error> {
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         Ok(Self::from_reader(buf)?)
     }
 }
 
 impl Writable for NbtBlob {
     #[inline]
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), errors::Error> {
+    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         Ok(self.to_writer(buf)?)
     }
 }

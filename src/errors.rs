@@ -1,15 +1,11 @@
 use std::io;
 use std::string;
-// use std::sync::PoisonError;
+use std::sync::{MutexGuard, PoisonError};
 
 use cfb8::cipher::errors::InvalidLength;
 use nbt::Error as nbt_error;
 use openssl::error::ErrorStack;
 use serde_json::Error as serde_error;
-
-use quick_error::quick_error;
-
-// TODO: impl PoisonError here.
 
 #[derive(Debug)]
 pub struct InvalidValue {
@@ -24,30 +20,74 @@ impl std::fmt::Display for InvalidValue {
     }
 }
 
-quick_error! {
-    #[derive(Debug)]
-    pub enum Error {
-        Io {
-            from(io::Error)
-        }
-        FromUtf8 {
-            from(string::FromUtf8Error)
-        }
-        Serde {
-            from(serde_error)
-        }
-        Nbt {
-            from(nbt_error)
-        }
-        OpenSSLErrorStack {
-            from(ErrorStack)
-        }
-        InvalidKeyLen {
-            from(InvalidLength)
-        }
-        InvalidValue {
-            from(InvalidValue)
-        }
+#[derive(Debug)]
+pub enum Error {
+    Io(io::Error),
+    FromUtf8Error(string::FromUtf8Error),
+    Serde(serde_error),
+    Nbt(nbt_error),
+    SSLErrorStack(ErrorStack),
+    InvalidKeyLen(InvalidLength),
+    InvalidValue(InvalidValue),
+}
+
+impl From<io::Error> for Error {
+    fn from(item: io::Error) -> Self {
+        Self::Io(item)
+    }
+}
+
+impl From<string::FromUtf8Error> for Error {
+    fn from(item: string::FromUtf8Error) -> Self {
+        Self::FromUtf8Error(item)
+    }
+}
+
+impl From<serde_error> for Error {
+    fn from(item: serde_error) -> Self {
+        Self::Serde(item)
+    }
+}
+
+impl From<nbt_error> for Error {
+    fn from(item: nbt_error) -> Self {
+        Self::Nbt(item)
+    }
+}
+
+impl From<ErrorStack> for Error {
+    fn from(item: ErrorStack) -> Self {
+        Self::SSLErrorStack(item)
+    }
+}
+
+impl From<InvalidLength> for Error {
+    fn from(item: InvalidLength) -> Self {
+        Self::InvalidKeyLen(item)
+    }
+}
+
+impl From<InvalidValue> for Error {
+    fn from(item: InvalidValue) -> Self {
+        Self::InvalidValue(item)
+    }
+}
+
+#[derive(Debug)]
+pub enum ConnectionError<'a, T> {
+    LockError(PoisonError<MutexGuard<'a, T>>),
+    Error(Error),
+}
+
+impl<'a, T> From<PoisonError<MutexGuard<'a, T>>> for ConnectionError<'a, T> {
+    fn from(item: PoisonError<MutexGuard<'a, T>>) -> Self {
+        Self::LockError(item)
+    }
+}
+
+impl<'a, T> From<Error> for ConnectionError<'a, T> {
+    fn from(item: Error) -> Self {
+        Self::Error(item)
     }
 }
 

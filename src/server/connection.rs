@@ -5,32 +5,35 @@ use std::io;
 pub use std::net::SocketAddr;
 use std::net::TcpStream;
 
-use crate::errors::Error;
-use crate::event;
-use crate::{encryption::DefaultStreamCipher, event::EventState};
+use crate::encryption::*;
+use crate::errors::*;
+use crate::event::*;
 
 /// Encrypted wrapper around a `TcpStream`.
 pub struct EncryptedTcpStream<const KEY_LEN: usize> {
     /// TcpStream to read from.
     stream: TcpStream,
     /// Cipher algorithm.
-    cipher: Option<DefaultStreamCipher<KEY_LEN>>,
+    cipher: Option<DefaultStreamCipher>,
 }
 
 impl<const KEY_LEN: usize> EncryptedTcpStream<KEY_LEN> {
     /// Create a new TCP connection to the `address`.
     #[inline]
-    pub fn connect(address: &str, cipher: Option<DefaultStreamCipher<KEY_LEN>>) -> Self {
-        Self {
+    pub fn connect(address: &str, cipher: Option<&[u8; KEY_LEN]>) -> TetsuResult<Self> {
+        Ok(Self {
             stream: TcpStream::connect(address).unwrap(),
-            cipher,
-        }
+            cipher: match cipher {
+                Some(key) => Some(DefaultStreamCipher::new_from_slices(key, key)?),
+                _ => None,
+            },
+        })
     }
 
     /// Set the key to encrypt with.
     #[inline]
-    pub fn set_cipher(&mut self, key: &[u8; KEY_LEN]) -> Result<(), Error> {
-        self.cipher = Some(DefaultStreamCipher::new(*key)?);
+    pub fn set_cipher(&mut self, key: &[u8; KEY_LEN]) -> TetsuResult<()> {
+        self.cipher = Some(DefaultStreamCipher::new_from_slices(key, key)?);
         Ok(())
     }
 
@@ -80,9 +83,9 @@ pub struct EncryptedConnection {
     /// Internal TCP stream.
     stream: EncryptedTcpStream<16>,
     /// Current connection state (Status/Handshake/Login/Play).
-    state: event::EventState,
+    state: EventState,
     /// Protocol version used by the connection.
-    pub protocol_version: event::ProtocolVersion,
+    pub protocol_version: ProtocolVersion,
     /// Compression threshold.
     compression_threshold: i32,
 }
@@ -90,13 +93,13 @@ pub struct EncryptedConnection {
 impl EncryptedConnection {
     /// Construct a new Encrypted Connection to a server.
     #[inline]
-    pub fn new(address: &str, port: u16, protocol_version: event::ProtocolVersion) -> Self {
-        Self {
-            stream: EncryptedTcpStream::connect(&format!("{}:{}", address, port), None),
-            state: event::EventState::Status,
+    pub fn new(address: &str, port: u16, protocol_version: ProtocolVersion) -> TetsuResult<Self> {
+        Ok(Self {
+            stream: EncryptedTcpStream::connect(&format!("{}:{}", address, port), None)?,
+            state: EventState::Status,
             protocol_version,
             compression_threshold: 0,
-        }
+        })
     }
 
     /// Set the current state of the the connection.
@@ -113,8 +116,8 @@ impl EncryptedConnection {
 
     /// Read and parse a packet from the internal `TcpStream`.
     #[inline]
-    pub fn read_event(&mut self) -> Result<event::Event, Error> {
-        event::Event::read_from(
+    pub fn read_event(&mut self) -> TetsuResult<Event> {
+        Event::read_from(
             &mut self.stream,
             &self.state,
             &self.protocol_version,
@@ -124,7 +127,7 @@ impl EncryptedConnection {
 
     /// Send a packet to the internal `TcpStream`.
     #[inline]
-    pub fn send_event(&mut self, _event: event::Event) -> Result<(), Error> {
+    pub fn send_event(&mut self, _event: Event) -> TetsuResult<()> {
         _event.write_to(
             &mut self.stream,
             &self.state,
@@ -135,7 +138,7 @@ impl EncryptedConnection {
 
     /// Set the key to encrypt with.
     #[inline]
-    pub fn set_cipher(&mut self, key: &[u8; 16]) -> Result<(), Error> {
+    pub fn set_cipher(&mut self, key: &[u8; 16]) -> TetsuResult<()> {
         self.stream.set_cipher(key)
     }
 
@@ -143,5 +146,14 @@ impl EncryptedConnection {
     #[inline]
     pub fn get_address(&self) -> SocketAddr {
         self.stream.get_address()
+    }
+}
+
+impl std::fmt::Debug for EncryptedConnection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("")
+            .field(&self.state)
+            .field(&self.protocol_version)
+            .finish()
     }
 }

@@ -65,7 +65,7 @@ macro_rules! protocol_impl {
             state: &EventState,
             direction: &PacketDirection,
             compression_threshold: i32
-        ) -> Result<Event, Error> {
+        ) -> TetsuResult<Event> {
             let mut bytes = vec![0; VarInt::read_from(buf)?.0 as usize];
             buf.read_exact(&mut bytes)?;
 
@@ -113,7 +113,7 @@ macro_rules! protocol_impl {
             buf: &mut T,
             event: Event,
             compression_threshold: i32
-        ) -> Result<(), Error> {
+        ) -> TetsuResult<()> {
             let mut _buf = Vec::new();
 
             #[allow(unreachable_patterns)]

@@ -47,7 +47,7 @@ impl Server {
                     Some(p) => p,
                     _ => Self::get_version(&address, port)?,
                 },
-            )),
+            )?),
             connected_address: format!("{}:{}", address, port),
             connected_user: None,
         })
@@ -73,19 +73,20 @@ impl Server {
 
     /// Read incoming server events.
     #[inline]
-    pub fn read_event(&self) -> Result<Event, Error> {
-        self.connection.lock().unwrap().read_event()
+    pub fn read_event(&self) -> Result<Event, ConnectionError<EncryptedConnection>> {
+        Ok(self.connection.lock()?.read_event()?)
     }
 
     /// Send an event to the server.
     #[inline]
-    pub fn send_event(&self, _event: Event) -> Result<(), Error> {
-        self.connection.lock().unwrap().send_event(_event)
+    pub fn send_event(&self, _event: Event) -> Result<(), ConnectionError<EncryptedConnection>> {
+        self.connection.lock()?.send_event(_event)?;
+        Ok(())
     }
 
     /// Attempt to get the protocol version of a server.
     pub fn get_version(address: &str, port: u16) -> Result<ProtocolVersion, Error> {
-        let mut connection = EncryptedConnection::new(address, port, event::ProtocolVersion::V47);
+        let mut connection = EncryptedConnection::new(address, port, event::ProtocolVersion::V47)?;
 
         connection.set_state(&event::EventState::Handshake);
 
@@ -114,11 +115,16 @@ impl Server {
     }
 
     /// Connect a user to the server. Only one user can be connected at a time.
-    pub fn connect_player(&mut self, profile: &User) -> Result<(), Error> {
+    pub fn connect_player(
+        &mut self,
+        profile: &User,
+    ) -> Result<(), ConnectionError<EncryptedConnection>> {
         let start = time::Instant::now();
 
         if let Some(p) = &self.connected_user {
-            panic!("User {} already connected.", p.selected_profile.name);
+            return Err(ConnectionError::from(Error::from(InvalidValue {
+                expected: format!("User {} already connected.", p.selected_profile.name),
+            })));
         }
 
         let (address, port) = match self.get_connection_address() {
@@ -127,13 +133,11 @@ impl Server {
         };
 
         self.connection
-            .lock()
-            .unwrap()
+            .lock()?
             .set_state(&event::EventState::Handshake);
 
         self.connection
-            .lock()
-            .unwrap()
+            .lock()?
             .send_event(Event::Handshake(event::Handshake {
                 server_address: address,
                 server_port: port,
@@ -141,14 +145,10 @@ impl Server {
             }))
             .unwrap();
 
-        self.connection
-            .lock()
-            .unwrap()
-            .set_state(&event::EventState::Login);
+        self.connection.lock()?.set_state(&event::EventState::Login);
 
         self.connection
-            .lock()
-            .unwrap()
+            .lock()?
             .send_event(Event::LoginStart(event::LoginStart {
                 name: profile.selected_profile.name.clone(),
             }))
@@ -185,15 +185,14 @@ impl Server {
         }
 
         self.connection
-            .lock()
-            .unwrap()
+            .lock()?
             .send_event(Event::EncryptionResponse(encryption_response))
             .unwrap();
 
-        self.connection.lock().unwrap().set_cipher(&shared)?;
+        self.connection.lock()?.set_cipher(&shared)?;
 
         loop {
-            let event = self.connection.lock().unwrap().read_event()?;
+            let event = self.connection.lock()?.read_event()?;
             match event {
                 Event::SetCompression(c) => self
                     .connection
@@ -210,10 +209,7 @@ impl Server {
             };
         }
 
-        self.connection
-            .lock()
-            .unwrap()
-            .set_state(&event::EventState::Play);
+        self.connection.lock()?.set_state(&event::EventState::Play);
 
         Ok(())
     }

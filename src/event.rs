@@ -10,7 +10,7 @@ use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_repr::*;
 
-use crate::errors::Error;
+use crate::errors::TetsuResult;
 use crate::packet::*;
 use crate::versions;
 
@@ -96,7 +96,7 @@ impl Event {
         _state: &EventState,
         protocol: &ProtocolVersion,
         compression_threshold: i32,
-    ) -> Result<(), Error> {
+    ) -> TetsuResult<()> {
         let start = time::Instant::now();
         match protocol {
             ProtocolVersion::V47 => versions::v47::write_event(buf, self, compression_threshold),
@@ -113,7 +113,7 @@ impl Event {
         state: &EventState,
         protocol: &ProtocolVersion,
         compression_threshold: i32,
-    ) -> Result<Self, Error> {
+    ) -> TetsuResult<Self> {
         let start = time::Instant::now();
         let ev = match protocol {
             ProtocolVersion::V47 => versions::v47::read_event(
