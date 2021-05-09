@@ -16,7 +16,7 @@ pub struct EncryptedTcpStream<const KEY_LEN: usize> {
     /// TcpStream to read from.
     stream: TcpStream,
     /// Cipher algorithm.
-    cipher: Option<DefaultStreamCipher>,
+    cipher: Option<DefaultStreamCipher<KEY_LEN>>,
 }
 
 impl<const KEY_LEN: usize> EncryptedTcpStream<KEY_LEN> {
@@ -26,7 +26,7 @@ impl<const KEY_LEN: usize> EncryptedTcpStream<KEY_LEN> {
         Ok(Self {
             stream: TcpStream::connect(address).unwrap(),
             cipher: match cipher {
-                Some(key) => Some(DefaultStreamCipher::new_from_slices(key, key)?),
+                Some(key) => Some(DefaultStreamCipher::new(key)?),
                 _ => None,
             },
         })
@@ -35,7 +35,7 @@ impl<const KEY_LEN: usize> EncryptedTcpStream<KEY_LEN> {
     /// Set the key to encrypt with.
     #[inline]
     pub fn set_cipher(&mut self, key: &[u8; KEY_LEN]) -> TetsuResult<()> {
-        self.cipher = Some(DefaultStreamCipher::new_from_slices(key, key)?);
+        self.cipher = Some(DefaultStreamCipher::new(key)?);
         Ok(())
     }
 

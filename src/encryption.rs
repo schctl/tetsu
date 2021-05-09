@@ -13,7 +13,6 @@ pub use cfb8::cipher::{AsyncStreamCipher, NewCipher};
 use cfb8::Cfb8;
 
 pub type PublicKey = PKey<Public>;
-pub type DefaultStreamCipher = Cfb8<Aes128>;
 
 /// Fills `key` with random bytes.
 #[inline]
@@ -25,6 +24,34 @@ pub fn generate_key(key: &mut [u8]) {
 #[inline]
 pub fn pkey_from_der(key: &[u8]) -> TetsuResult<PublicKey> {
     Ok(PKey::from_rsa(Rsa::public_key_from_der(key)?)?)
+}
+
+/// Default Minecraft stream cipher. Uses AES/CFB8.
+pub struct DefaultStreamCipher<const KEY_LEN: usize> {
+    /// Internal CFB8 cipher.
+    cipher: Cfb8<Aes128>,
+}
+
+impl<const KEY_LEN: usize> DefaultStreamCipher<KEY_LEN> {
+    /// Constructs a new stream cipher
+    #[inline]
+    pub fn new(key: &[u8; KEY_LEN]) -> TetsuResult<Self> {
+        Ok(Self {
+            cipher: Cfb8::new_from_slices(key, key)?,
+        })
+    }
+
+    /// Decrypt data using the internal cipher.
+    #[inline]
+    pub fn decrypt(&mut self, data: &mut [u8]) {
+        self.cipher.decrypt(data)
+    }
+
+    /// Encrypt data using the internal cipher.
+    #[inline]
+    pub fn encrypt(&mut self, data: &mut [u8]) {
+        self.cipher.encrypt(data)
+    }
 }
 
 /// Wrapper around an RSA public key.
