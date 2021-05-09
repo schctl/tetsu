@@ -2,9 +2,6 @@
 //! The type name indicates the type that is sent/to be sent.
 //! It's methods return/write the equivalent type.
 
-use crate::errors::*;
-
-use std::convert::From;
 use std::io::{self, prelude::*};
 use std::marker::PhantomData;
 
@@ -13,6 +10,8 @@ use serde::{Deserialize, Serialize};
 
 pub use nbt::Blob as NbtBlob;
 pub use uuid::Uuid;
+
+use crate::errors::*;
 
 pub trait Readable: Sized {
     fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self>;

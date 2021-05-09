@@ -1,13 +1,15 @@
 //! Basic server connection utilities.
 
-use std::io;
-
-pub use std::net::SocketAddr;
-use std::net::TcpStream;
-
 use crate::encryption::*;
 use crate::errors::*;
 use crate::event::*;
+
+use std::io;
+pub use std::net::SocketAddr;
+use std::net::TcpStream;
+
+#[allow(unused_imports)]
+use log::{debug, error, info, warn};
 
 /// Encrypted wrapper around a `TcpStream`.
 pub struct EncryptedTcpStream<const KEY_LEN: usize> {
@@ -105,6 +107,10 @@ impl EncryptedConnection {
     /// Set the current state of the the connection.
     #[inline]
     pub fn set_state(&mut self, state: &EventState) {
+        info!(
+            "Switching connection state from {:?} -> {:?}",
+            self.state, state
+        );
         self.state = *state;
     }
 

@@ -1,7 +1,7 @@
 /*!
-Protocol events. The client/server communicates by sending
-and receiving events. These act as a sort of common interface
-to all the major Minecraft versions' packet implementations.
+The client/server communicates by sendingand receiving events.
+These act as a sort of common interface
+to Minecraft's various packet implementations.
 
 # Examples
 ```
@@ -37,8 +37,6 @@ let read_handshake = Event::read_from(
 assert_eq!(write_handshake, read_handshake)
 ```
 */
-
-use std::time;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
@@ -108,7 +106,6 @@ match event {
 }
 ```
 */
-#[allow(missing_docs)]
 #[non_exhaustive]
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Event {
@@ -144,7 +141,6 @@ impl Event {
         protocol: &ProtocolVersion,
         compression_threshold: i32,
     ) -> TetsuResult<()> {
-        let start = time::Instant::now();
         match protocol {
             ProtocolVersion::V47 => {
                 versions::v47::write_event(buf, self, state, direction, compression_threshold)
@@ -152,9 +148,7 @@ impl Event {
             ProtocolVersion::V754 => {
                 versions::v754::write_event(buf, self, state, direction, compression_threshold)
             }
-        }?;
-        debug!("Wrote event: Took: {} us", start.elapsed().as_micros());
-        Ok(())
+        }
     }
 
     /// Read an event from a buffer.
@@ -166,17 +160,14 @@ impl Event {
         protocol: &ProtocolVersion,
         compression_threshold: i32,
     ) -> TetsuResult<Self> {
-        let start = time::Instant::now();
-        let ev = match protocol {
+        match protocol {
             ProtocolVersion::V47 => {
                 versions::v47::read_event(buf, state, direction, compression_threshold)
             }
             ProtocolVersion::V754 => {
                 versions::v754::read_event(buf, state, direction, compression_threshold)
             }
-        };
-        debug!("Read event: Took: {} us", start.elapsed().as_micros());
-        ev
+        }
     }
 }
 

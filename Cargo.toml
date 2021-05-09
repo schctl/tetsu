@@ -8,8 +8,6 @@ repository = "https://github.com/schctl/tetsu/"
 authors = ["Sachin Cherian <sachinctl@protonmail.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [profile.release]
 lto = "thin"
 codegen-units = 1

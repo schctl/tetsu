@@ -117,7 +117,7 @@ impl Server {
     /// Connect a user to the server. Only one user can be connected at a time.
     pub fn connect_player(
         &mut self,
-        profile: &User,
+        user: User,
     ) -> Result<(), ConnectionError<EncryptedConnection>> {
         let start = time::Instant::now();
 
@@ -150,13 +150,24 @@ impl Server {
         self.connection
             .lock()?
             .send_event(Event::LoginStart(event::LoginStart {
-                name: profile.selected_profile.name.clone(),
+                name: user.selected_profile.name.clone(),
             }))
             .unwrap();
 
         let encryption_request = match self.connection.lock().unwrap().read_event()? {
             Event::EncryptionRequest(e) => e,
-            _ => panic!("Unknown event!"),
+            Event::LoginSuccess(_) => {
+                warn!("Server running in offline mode. Logging in.");
+                info!("Login success at: {} ms!", start.elapsed().as_millis());
+                self.connected_user = Some(user);
+                self.connection.lock()?.set_state(&event::EventState::Play);
+                return Ok(());
+            }
+            _ => {
+                return Err(ConnectionError::from(Error::from(InvalidValue {
+                    expected: "EncryptionRequest".to_owned(),
+                })))
+            }
         };
 
         let mut encryption_response = event::EncryptionResponse {
@@ -177,7 +188,7 @@ impl Server {
             encryption_response.shared_secret = encypted_shared_secret;
             encryption_response.verify_token = encrypted_verify_token;
 
-            profile.join_server(
+            user.join_server(
                 &encryption_request.server_id,
                 &shared,
                 &encryption_request.public_key,
@@ -199,9 +210,9 @@ impl Server {
                     .lock()
                     .unwrap()
                     .set_compression_threshold(c.threshold),
-                Event::LoginSuccess(e) => {
-                    debug!("Login success at: {} ms!", start.elapsed().as_millis());
-                    debug!("{:?}", e);
+                Event::LoginSuccess(_) => {
+                    info!("Login success at: {} ms!", start.elapsed().as_millis());
+                    self.connected_user = Some(user);
                     break;
                 }
                 Event::Disconnect(c) => panic!("Disconnected!: {:?}", c),
