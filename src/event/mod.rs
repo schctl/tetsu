@@ -1,7 +1,5 @@
 /*!
-The client/server communicates by sendingand receiving events.
-These act as a sort of common interface
-to Minecraft's various packet implementations.
+Server-client communication types.
 
 # Examples
 ```
@@ -10,22 +8,14 @@ use tetsu::event::*;
 
 let mut connection = Cursor::new(Vec::new());
 
+// ...
+
 let write_handshake = Event::Handshake(Handshake {
     server_address: "127.0.0.1".to_owned(),
     server_port: 25565,
     next_state: EventState::Login,
-});
-write_handshake.clone().write_to(
-    &mut connection,
-    &EventState::Handshake,
-    &EventDirection::ServerBound,
-    &ProtocolVersion::V47,
-    0,
-);
-
-connection.set_position(0);
-
-let read_handshake = Event::read_from(
+})
+.write_to(
     &mut connection,
     &EventState::Handshake,
     &EventDirection::ServerBound,
@@ -33,8 +23,6 @@ let read_handshake = Event::read_from(
     0,
 )
 .unwrap();
-
-assert_eq!(write_handshake, read_handshake)
 ```
 */
 
@@ -66,8 +54,7 @@ let event = Event::read_from(
     &EventDirection::ClientBound,
     &ProtocolVersion::V47,
     0,
-)
-.unwrap();
+).unwrap();
 
 match event {
     Event::Pong(e) => {},

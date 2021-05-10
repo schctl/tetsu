@@ -6,10 +6,10 @@ use std::time;
 
 use tetsu::errors;
 use tetsu::server;
-use tetsu::user;
+use tetsu::mojang;
 
 fn main() {
-    let user = user::User::authenticate(
+    let user = mojang::User::authenticate(
         env::var("MOJANG_USER").unwrap(),
         env::var("MOJANG_USER_PWD").unwrap(),
     );

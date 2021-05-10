@@ -12,7 +12,7 @@ use log::{debug, error, info, warn};
 use crate::crypto;
 use crate::errors::*;
 use crate::event::{self, Event};
-use crate::{event::ProtocolVersion, user::User};
+use crate::{event::ProtocolVersion, mojang::User};
 
 /// High level wrapper around a Minecraft server connection.
 pub struct Server {

@@ -2,7 +2,7 @@
 name = "tetsu"
 license = "MIT"
 readme = "README.md"
-version = "0.0.1"
+version = "0.0.2"
 description = "A highly experimental version agnostic implementation of Minecraft's server protocols."
 repository = "https://github.com/schctl/tetsu/"
 authors = ["Sachin Cherian <sachinctl@protonmail.com>"]

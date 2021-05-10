@@ -1,4 +1,4 @@
-//! All possible errors.
+//! Error types.
 
 use std::io;
 use std::string;

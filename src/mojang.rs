@@ -6,7 +6,7 @@ use crate::crypto;
 
 /// Mojang authentication server.
 pub const AUTH_SERVER: &str = "https://authserver.mojang.com/authenticate";
-/// Mojang server session join server.
+/// Server join request session-server.
 pub const JOIN_SERVER: &str = "https://sessionserver.mojang.com/session/minecraft/join";
 
 // ----- Mojang sent info -----

@@ -1,5 +1,5 @@
 /*!
-Interface to Minecraft's server protocol.
+High level interface to Minecraft's server protocols.
 
 # Examples
 ```no_run
@@ -9,15 +9,14 @@ use std::time;
 
 use tetsu::errors;
 use tetsu::server;
-use tetsu::user;
+use tetsu::mojang;
 
-let user = user::User::authenticate(
+let user = mojang::User::authenticate(
     env::var("MOJANG_USER").unwrap(),
     env::var("MOJANG_USER_PWD").unwrap(),
 );
 
 let mut server = server::Server::new("127.0.0.1", None, None).unwrap();
-
 server.connect_player(user).unwrap();
 
 loop {
@@ -39,9 +38,12 @@ loop {
 
 #[macro_use]
 mod packet;
-mod versions;
 pub mod crypto;
 pub mod errors;
 pub mod event;
 pub mod server;
-pub mod user;
+pub mod mojang;
+mod versions;
+
+#[cfg(test)]
+mod tests;
