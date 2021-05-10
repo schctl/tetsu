@@ -290,6 +290,24 @@ impl Writable for Chat {
     }
 }
 
+impl Default for Chat {
+    fn default() -> Self {
+        Self {
+            text: None,
+            translate: None,
+            bold: None,
+            italic: None,
+            underlined: None,
+            strikethrough: None,
+            obfuscated: None,
+            color: None,
+            click_event: None,
+            hover_event: None,
+            extra: None,
+        }
+    }
+}
+
 // ---- Identifier ---------
 
 // Same as String

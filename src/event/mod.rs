@@ -26,6 +26,8 @@ let write_handshake = Event::Handshake(Handshake {
 ```
 */
 
+use core::f32;
+
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
@@ -130,8 +132,6 @@ impl Event {
         }
     }
 }
-
-// All possible server events -----------
 
 // Status ----------
 

@@ -17,13 +17,13 @@ mod internal {
     // Protocol specific types ---
 
     #[derive(Debug, PartialEq)]
-    pub struct PositionXZY {
+    pub struct PositionXYZ {
         pub x: i64,
-        pub z: i64,
         pub y: i64,
+        pub z: i64,
     }
 
-    impl From<Position> for PositionXZY {
+    impl From<Position> for PositionXYZ {
         fn from(item: Position) -> Self {
             Self {
                 x: item.x,
@@ -33,8 +33,8 @@ mod internal {
         }
     }
 
-    impl From<PositionXZY> for Position {
-        fn from(item: PositionXZY) -> Self {
+    impl From<PositionXYZ> for Position {
+        fn from(item: PositionXYZ) -> Self {
             Self {
                 x: item.x,
                 y: item.y,
@@ -43,23 +43,27 @@ mod internal {
         }
     }
 
-    impl Readable for PositionXZY {
+    impl Readable for PositionXYZ {
         fn read_from<T: io::Read>(buf: &mut T) -> Result<Self, Error> {
             let val = buf.read_u64::<BigEndian>()?;
+
+            let x = (val as i64) >> 38;
+            let y = ((val as i64) >> 26) & 0xFFF;
+            let z = ((val as i64) << 38) >> 38;
+
             Ok(Self {
-                x: (val >> 38) as i64,
-                y: ((val >> 26) & 0xFF) as i64,
-                z: (val << 38 >> 38) as i64,
+                x: if x >= (2 << 24) { x - (2 << 25) } else { x },
+                y: if y >= (2 << 10) { y - (2 << 11) } else { y },
+                z: if z >= (2 << 24) { z - (2 << 25) } else { z },
             })
         }
     }
 
-    impl Writable for PositionXZY {
+    impl Writable for PositionXYZ {
         fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), Error> {
-            let val = ((self.x as u64 & 0x3FFFFFF) << 38)
-                | ((self.y as u64 & 0xFFF) << 26)
-                | (self.z as u64 & 0x3FFFFFF);
-            Ok(buf.write_u64::<BigEndian>(val)?)
+            Ok(buf.write_i64::<BigEndian>(
+                ((self.x & 0x3FFFFFF) << 38) | ((self.y & 0xFFF) << 26) | (self.z & 0x3FFFFFF),
+            )?)
         }
     }
 
@@ -180,7 +184,7 @@ protocol_impl! {
             }
         }
         to_event {
-            | origin: StatusPingPacket | -> Result<Event, Error> {
+            | origin: StatusPingPacket | -> TetsuResult<Event> {
                 Ok(Event::Ping(Ping {
                     payload: origin.payload
                 }))
@@ -511,7 +515,7 @@ protocol_impl! {
             }
         }
         fields {
-            location: PositionXZY,
+            location: PositionXYZ,
         }
     }
 
