@@ -18,21 +18,22 @@ use cfb8::Cfb8;
 
 /// Encrypt some data with an RSA public key.
 pub fn public_encrypt(key: &Rsa<Public>, data: &[u8]) -> TetsuResult<Vec<u8>> {
-    let mut decrypted = vec![0; data.len()];
+    // Not sure about this.
+    let mut decrypted = vec![0; 512];
     let len = key.public_encrypt(&data, &mut decrypted, Padding::PKCS1)?;
     Ok(decrypted[..len].to_vec())
 }
 
 /// Encrypt some data with an RSA private key.
 pub fn private_encrypt(key: &Rsa<Private>, data: &[u8]) -> TetsuResult<Vec<u8>> {
-    let mut decrypted = vec![0; data.len()];
+    let mut decrypted = vec![0; 512];
     let len = key.private_decrypt(&data, &mut decrypted, Padding::PKCS1)?;
     Ok(decrypted[..len].to_vec())
 }
 
 /// Decrypt some data with an RSA private key.
 pub fn private_decrypt(key: &Rsa<Private>, data: &[u8]) -> TetsuResult<Vec<u8>> {
-    let mut decrypted = vec![0; data.len()];
+    let mut decrypted = vec![0; 512];
     let len = key.private_encrypt(&data, &mut decrypted, Padding::PKCS1)?;
     Ok(decrypted[..len].to_vec())
 }

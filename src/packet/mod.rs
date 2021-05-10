@@ -61,6 +61,8 @@ macro_rules! protocol_impl {
         ) -> TetsuResult<Event> {
             let mut bytes = vec![0; VarInt::read_from(buf)?.0 as usize];
 
+            let start = std::time::Instant::now();
+
             buf.read_exact(&mut bytes)?;
             let mut bytes = std::io::Cursor::new(bytes);
 
@@ -79,7 +81,7 @@ macro_rules! protocol_impl {
             let id = VarInt::read_from(&mut bytes)?.0;
 
             #[allow(unreachable_patterns)]
-            match (&id, direction, state) {
+            let res = match (&id, direction, state) {
                 $(
                     (&<$inherit>::ID, &<$inherit>::DIRECTION, &<$inherit>::STATE) => {
                         Ok(<$inherit>::read_from(&mut bytes)?.into_event()?)
@@ -95,7 +97,11 @@ macro_rules! protocol_impl {
                         expected: format!("not packet: [{:x}]:{:?}:{:?}", id, direction, state)
                     }))
                 }
-            }
+            };
+
+            debug!("Packet read took: {} ns", start.elapsed().as_nanos());
+
+            res
         }
 
         /// Implementation for converting `Event`s to protocol-specific calls.
@@ -106,6 +112,8 @@ macro_rules! protocol_impl {
             _direction: &EventDirection,
             compression_threshold: i32
         ) -> TetsuResult<()> {
+            let start = std::time::Instant::now();
+
             let mut _buf = Vec::new();
 
             #[allow(unreachable_patterns)]
@@ -140,6 +148,8 @@ macro_rules! protocol_impl {
                 VarInt(_buf.len() as i32).write_to(buf)?;
                 buf.write_all(&_buf)?;
             }
+
+            debug!("Packet write took: {} ns", start.elapsed().as_nanos());
 
             Ok(())
         }

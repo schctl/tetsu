@@ -9,6 +9,10 @@ use tetsu::mojang;
 use tetsu::server;
 
 fn main() {
+    env_logger::builder()
+        .filter(Some("tetsu"), log::LevelFilter::Debug)
+        .init();
+
     let user = mojang::User::authenticate(
         env::var("MOJANG_USER").unwrap(),
         env::var("MOJANG_USER_PWD").unwrap(),

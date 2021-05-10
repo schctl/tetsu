@@ -324,8 +324,8 @@ impl Writable for VarInt {
     fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         let mut val = self.0 as u32;
 
-        loop {
-            let byte = val & 0b01111111;
+        for _ in 0..6 {
+            let byte = val & 0x7F;
 
             val >>= 7;
 
@@ -334,8 +334,10 @@ impl Writable for VarInt {
                 return Ok(());
             }
 
-            buf.write_u8((byte | 0b10000000) as u8)?;
+            buf.write_u8((byte | 0x80) as u8)?;
         }
+
+        Ok(())
     }
 }
 
