@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::encryption;
+use crate::crypto;
 
 #[allow(dead_code)]
 pub const AUTH_SERVER: &str = "https://authserver.mojang.com/authenticate";
@@ -139,12 +139,12 @@ impl User {
     pub fn join_server(&self, server_id: &str, shared_key: &[u8], public_key: &[u8]) {
         let hash_str;
         {
-            let mut hasher = encryption::Sha1::new();
+            let mut hasher = crypto::Sha1::new();
             hasher.update(server_id.as_bytes());
             hasher.update(shared_key);
             hasher.update(public_key);
 
-            hash_str = encryption::hexdigest(hasher);
+            hash_str = crypto::hexdigest(hasher);
         }
 
         let join_info = JoinServer {

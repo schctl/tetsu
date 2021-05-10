@@ -2,17 +2,15 @@
 
 use crate::errors::TetsuResult;
 
-use openssl::encrypt::Encrypter;
-use openssl::pkey::{PKey, Public};
+pub use openssl::pkey::{Private, Public};
 pub use openssl::rand::rand_bytes;
-use openssl::rsa::{Padding, Rsa};
+use openssl::rsa::Padding;
+pub use openssl::rsa::Rsa;
 pub use openssl::sha::Sha1;
 
 use aes::Aes128;
 pub use cfb8::cipher::{AsyncStreamCipher, NewCipher};
 use cfb8::Cfb8;
-
-pub type PublicKey = PKey<Public>;
 
 /// Fills `key` with random bytes.
 #[inline]
@@ -20,10 +18,25 @@ pub fn generate_key(key: &mut [u8]) {
     rand_bytes(key).unwrap();
 }
 
-/// Return a PublicKey object from a DER encoded RSA key.
-#[inline]
-pub fn pkey_from_der(key: &[u8]) -> TetsuResult<PublicKey> {
-    Ok(PKey::from_rsa(Rsa::public_key_from_der(key)?)?)
+/// Encrypt some data with an RSA public key.
+pub fn public_encrypt(key: &Rsa<Public>, data: &[u8]) -> TetsuResult<Vec<u8>> {
+    let mut decrypted = vec![0; data.len()];
+    let len = key.public_encrypt(&data, &mut decrypted, Padding::PKCS1)?;
+    Ok(decrypted[..len].to_vec())
+}
+
+/// Encrypt some data with an RSA private key.
+pub fn private_encrypt(key: &Rsa<Private>, data: &[u8]) -> TetsuResult<Vec<u8>> {
+    let mut decrypted = vec![0; data.len()];
+    let len = key.private_decrypt(&data, &mut decrypted, Padding::PKCS1)?;
+    Ok(decrypted[..len].to_vec())
+}
+
+/// Decrypt some data with an RSA private key.
+pub fn private_decrypt(key: &Rsa<Private>, data: &[u8]) -> TetsuResult<Vec<u8>> {
+    let mut decrypted = vec![0; data.len()];
+    let len = key.private_encrypt(&data, &mut decrypted, Padding::PKCS1)?;
+    Ok(decrypted[..len].to_vec())
 }
 
 /// Default Minecraft stream cipher. Uses AES/CFB8.
@@ -51,33 +64,6 @@ impl<const KEY_LEN: usize> DefaultStreamCipher<KEY_LEN> {
     #[inline]
     pub fn encrypt(&mut self, data: &mut [u8]) {
         self.cipher.encrypt(data)
-    }
-}
-
-/// Wrapper around an RSA public key.
-pub struct RsaEncrypter<'a> {
-    /// Internal RSA encryptor.
-    encrypter: Encrypter<'a>,
-}
-
-impl<'a> RsaEncrypter<'a> {
-    /// Returns a new RSA encryptor from a Public key.
-    #[inline]
-    pub fn new(key: &'a PublicKey) -> TetsuResult<Self> {
-        let mut encrypter = Encrypter::new(&key)?;
-        encrypter.set_rsa_padding(Padding::PKCS1)?;
-        Ok(Self { encrypter })
-    }
-
-    /// Encrypt a buffer with an RSA key.
-    pub fn encrypt(&self, buf: &[u8]) -> TetsuResult<Vec<u8>> {
-        // Create an output buffer
-        let _buffer_len = self.encrypter.encrypt_len(&buf)?;
-        let mut encrypted_buf = vec![0; _buffer_len];
-        // Encrypt and truncate the buffer
-        let _encrypted_len = self.encrypter.encrypt(&buf, &mut encrypted_buf)?;
-        encrypted_buf.truncate(_encrypted_len);
-        Ok(encrypted_buf)
     }
 }
 

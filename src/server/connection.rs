@@ -1,6 +1,6 @@
 //! Basic server connection utilities.
 
-use crate::encryption::*;
+use crate::crypto::*;
 use crate::errors::*;
 use crate::event::*;
 

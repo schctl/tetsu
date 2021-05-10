@@ -9,7 +9,7 @@ use std::time;
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
-use crate::encryption;
+use crate::crypto;
 use crate::errors::*;
 use crate::event::{self, Event};
 use crate::{event::ProtocolVersion, user::User};
@@ -178,15 +178,15 @@ impl Server {
         let mut shared = [0; 16];
 
         {
-            encryption::generate_key(&mut shared);
+            crypto::generate_key(&mut shared);
 
-            let pkey = encryption::pkey_from_der(&encryption_request.public_key)?;
-            let encrypter = encryption::RsaEncrypter::new(&pkey)?;
-            let encypted_shared_secret = encrypter.encrypt(&shared)?;
-            let encrypted_verify_token = encrypter.encrypt(&encryption_request.verify_token)?;
-
-            encryption_response.shared_secret = encypted_shared_secret;
-            encryption_response.verify_token = encrypted_verify_token;
+            let pkey = match crypto::Rsa::public_key_from_der(&encryption_request.public_key) {
+                Ok(p) => p,
+                Err(e) => return Err(Error::from(e).into()),
+            };
+            encryption_response.shared_secret = crypto::public_encrypt(&pkey, &shared)?;
+            encryption_response.verify_token =
+                crypto::public_encrypt(&pkey, &encryption_request.verify_token)?;
 
             user.join_server(
                 &encryption_request.server_id,

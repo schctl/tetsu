@@ -37,10 +37,10 @@ loop {
 
 #[macro_use]
 mod packet;
-mod encryption;
+mod versions;
+pub mod crypto;
 pub mod errors;
 pub mod event;
 pub mod server;
 #[allow(dead_code)]
 pub mod user;
-mod versions;
