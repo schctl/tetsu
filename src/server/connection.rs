@@ -4,81 +4,10 @@ use crate::crypto::*;
 use crate::errors::*;
 use crate::event::*;
 
-use std::io;
 pub use std::net::SocketAddr;
-use std::net::TcpStream;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
-
-/// Encrypted wrapper around a `TcpStream`.
-pub struct EncryptedTcpStream<const KEY_LEN: usize> {
-    /// TcpStream to read from.
-    stream: TcpStream,
-    /// Cipher algorithm.
-    cipher: Option<DefaultStreamCipher<KEY_LEN>>,
-}
-
-impl<const KEY_LEN: usize> EncryptedTcpStream<KEY_LEN> {
-    /// Create a new TCP connection to the `address`.
-    #[inline]
-    pub fn connect(address: &str, cipher: Option<&[u8; KEY_LEN]>) -> TetsuResult<Self> {
-        Ok(Self {
-            stream: TcpStream::connect(address).unwrap(),
-            cipher: match cipher {
-                Some(key) => Some(DefaultStreamCipher::new(key)?),
-                _ => None,
-            },
-        })
-    }
-
-    /// Set the key to encrypt with.
-    #[inline]
-    pub fn set_cipher(&mut self, key: &[u8; KEY_LEN]) -> TetsuResult<()> {
-        self.cipher = Some(DefaultStreamCipher::new(key)?);
-        Ok(())
-    }
-
-    /// Get the current connected address.
-    #[inline]
-    pub fn get_address(&self) -> SocketAddr {
-        self.stream.peer_addr().unwrap()
-    }
-}
-
-impl<const KEY_LEN: usize> io::Read for EncryptedTcpStream<KEY_LEN> {
-    #[inline]
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        match &mut self.cipher {
-            None => self.stream.read(buf),
-            Some(cipher) => {
-                let read = self.stream.read(buf)?;
-                cipher.decrypt(&mut buf[..read]);
-                Ok(read)
-            }
-        }
-    }
-}
-
-impl<const KEY_LEN: usize> io::Write for EncryptedTcpStream<KEY_LEN> {
-    #[inline]
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match &mut self.cipher {
-            None => self.stream.write(buf),
-            Some(cipher) => {
-                let mut data = buf.to_owned();
-                cipher.encrypt(&mut data);
-                self.stream.write_all(&data).unwrap();
-                Ok(data.len())
-            }
-        }
-    }
-
-    #[inline]
-    fn flush(&mut self) -> io::Result<()> {
-        self.stream.flush()
-    }
-}
 
 /// Encrypted connection to a Minecraft server.
 pub struct EncryptedConnection {

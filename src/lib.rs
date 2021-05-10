@@ -41,9 +41,11 @@ mod packet;
 pub mod crypto;
 pub mod errors;
 pub mod event;
-pub mod server;
 pub mod mojang;
+pub mod server;
 mod versions;
+
+pub use errors::TetsuResult;
 
 #[cfg(test)]
 mod tests;

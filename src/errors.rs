@@ -96,4 +96,10 @@ impl<'a, T> From<Error> for ConnectionError<'a, T> {
     }
 }
 
+impl<'a, T> From<ErrorStack> for ConnectionError<'a, T> {
+    fn from(item: ErrorStack) -> Self {
+        Self::Error(Error::from(item))
+    }
+}
+
 pub type TetsuResult<T> = Result<T, Error>;

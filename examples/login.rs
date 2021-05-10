@@ -5,8 +5,8 @@ use std::thread;
 use std::time;
 
 use tetsu::errors;
-use tetsu::server;
 use tetsu::mojang;
+use tetsu::server;
 
 fn main() {
     let user = mojang::User::authenticate(

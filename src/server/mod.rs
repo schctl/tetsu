@@ -1,4 +1,51 @@
-//! High level server connection.
+/*! High level server connection.
+
+# Examples
+
+## Raw connection.
+```no_run
+use tetsu::server;
+use tetsu::event;
+
+let mut connection = server::connection::EncryptedConnection::new(
+    "127.0.0.1",
+    25565,
+    event::ProtocolVersion::V47
+)
+.unwrap();
+```
+
+## Getting a server's version.
+```no_run
+use tetsu::server;
+
+println!(
+    "Detected version of local server: {}",
+    server::Server::get_version("127.0.0.1", None)
+        .unwrap()
+        .name
+);
+```
+
+## Event loop
+```no_run
+use tetsu::server;
+use tetsu::mojang;
+
+let user = mojang::User::authenticate(
+    "user@email".to_owned(),
+    "user_password".to_owned(),
+);
+
+let mut server = server::Server::new("127.0.0.1", None, None).unwrap();
+server.connect_player(user).unwrap();
+
+loop {
+    let event = server.read_event().unwrap();
+    // ...
+}
+```
+*/
 
 pub mod connection;
 use connection::EncryptedConnection;
@@ -9,9 +56,9 @@ use std::time;
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
-use crate::crypto;
 use crate::errors::*;
 use crate::event::{self, Event};
+use crate::{crypto, event::ServerVersion};
 use crate::{event::ProtocolVersion, mojang::User};
 
 /// High level wrapper around a Minecraft server connection.
@@ -44,7 +91,7 @@ impl Server {
                 port,
                 match protocol {
                     Some(p) => p,
-                    _ => Self::get_version(&address, port)?,
+                    _ => Self::get_version(&address, Some(port))?.protocol,
                 },
             )?),
             connected_address: format!("{}:{}", address, port),
@@ -84,7 +131,12 @@ impl Server {
     }
 
     /// Attempt to get the protocol version of a server.
-    pub fn get_version(address: &str, port: u16) -> Result<ProtocolVersion, Error> {
+    pub fn get_version(address: &str, port: Option<u16>) -> Result<ServerVersion, Error> {
+        let port = match port {
+            Some(p) => p,
+            _ => 25565,
+        };
+
         let mut connection = EncryptedConnection::new(address, port, event::ProtocolVersion::V47)?;
 
         connection.set_state(&event::EventState::Handshake);
@@ -104,7 +156,7 @@ impl Server {
             .unwrap();
 
         Ok(match connection.read_event()? {
-            Event::StatusResponse(e) => e.response.version.protocol,
+            Event::StatusResponse(e) => e.response.version,
             _ => {
                 return Err(Error::from(InvalidValue {
                     expected: "StatusResponse".to_owned(),
@@ -177,12 +229,9 @@ impl Server {
         let mut shared = [0; 16];
 
         {
-            crypto::generate_key(&mut shared);
+            crypto::rand_bytes(&mut shared)?;
 
-            let pkey = match crypto::Rsa::public_key_from_der(&encryption_request.public_key) {
-                Ok(p) => p,
-                Err(e) => return Err(Error::from(e).into()),
-            };
+            let pkey = crypto::Rsa::public_key_from_der(&encryption_request.public_key)?;
             encryption_response.shared_secret = crypto::public_encrypt(&pkey, &shared)?;
             encryption_response.verify_token =
                 crypto::public_encrypt(&pkey, &encryption_request.verify_token)?;
