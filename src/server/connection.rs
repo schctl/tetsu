@@ -12,7 +12,7 @@ use log::{debug, error, info, warn};
 /// Encrypted connection to a Minecraft server.
 pub struct EncryptedConnection {
     /// Internal TCP stream.
-    stream: EncryptedTcpStream<16>,
+    stream: EncryptedTcpStream,
     /// Current connection state (Status/Handshake/Login/Play).
     state: EventState,
     /// Protocol version used by the connection.

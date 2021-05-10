@@ -38,15 +38,15 @@ pub fn private_decrypt(key: &Rsa<Private>, data: &[u8]) -> TetsuResult<Vec<u8>> 
 }
 
 /// Default Minecraft stream cipher. Uses AES/CFB8.
-pub struct DefaultStreamCipher<const KEY_LEN: usize> {
+pub struct DefaultStreamCipher {
     /// Internal CFB8 cipher.
     cipher: Cfb8<Aes128>,
 }
 
-impl<const KEY_LEN: usize> DefaultStreamCipher<KEY_LEN> {
+impl DefaultStreamCipher {
     /// Constructs a new stream cipher
     #[inline]
-    pub fn new(key: &[u8; KEY_LEN]) -> TetsuResult<Self> {
+    pub fn new(key: &[u8]) -> TetsuResult<Self> {
         Ok(Self {
             cipher: Cfb8::new_from_slices(key, key)?,
         })
@@ -104,17 +104,17 @@ pub fn hexdigest(hasher: Sha1) -> String {
 }
 
 /// Encrypted wrapper around a [`TcpStream`].
-pub struct EncryptedTcpStream<const KEY_LEN: usize> {
+pub struct EncryptedTcpStream {
     /// TcpStream to read from.
     stream: TcpStream,
     /// Cipher algorithm.
-    cipher: Option<DefaultStreamCipher<KEY_LEN>>,
+    cipher: Option<DefaultStreamCipher>,
 }
 
-impl<const KEY_LEN: usize> EncryptedTcpStream<KEY_LEN> {
+impl EncryptedTcpStream {
     /// Create a new TCP connection to the `address`.
     #[inline]
-    pub fn connect(address: &str, cipher: Option<&[u8; KEY_LEN]>) -> TetsuResult<Self> {
+    pub fn connect(address: &str, cipher: Option<&[u8]>) -> TetsuResult<Self> {
         Ok(Self {
             stream: TcpStream::connect(address).unwrap(),
             cipher: match cipher {
@@ -126,7 +126,7 @@ impl<const KEY_LEN: usize> EncryptedTcpStream<KEY_LEN> {
 
     /// Set the key to encrypt with.
     #[inline]
-    pub fn set_cipher(&mut self, key: &[u8; KEY_LEN]) -> TetsuResult<()> {
+    pub fn set_cipher(&mut self, key: &[u8]) -> TetsuResult<()> {
         self.cipher = Some(DefaultStreamCipher::new(key)?);
         Ok(())
     }
@@ -138,7 +138,7 @@ impl<const KEY_LEN: usize> EncryptedTcpStream<KEY_LEN> {
     }
 }
 
-impl<const KEY_LEN: usize> io::Read for EncryptedTcpStream<KEY_LEN> {
+impl io::Read for EncryptedTcpStream {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match &mut self.cipher {
@@ -152,7 +152,7 @@ impl<const KEY_LEN: usize> io::Read for EncryptedTcpStream<KEY_LEN> {
     }
 }
 
-impl<const KEY_LEN: usize> io::Write for EncryptedTcpStream<KEY_LEN> {
+impl io::Write for EncryptedTcpStream {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match &mut self.cipher {

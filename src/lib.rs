@@ -27,7 +27,8 @@ loop {
                 thread::sleep(time::Duration::from_millis(50));
                 continue;
             }
-            errors::ConnectionError::Error(e) => panic!("Error while reading event: {:?}", e),
+            errors::ConnectionError::Error(e) =>
+                panic!("Error while reading event: {:?}", e),
         },
     }
 }
