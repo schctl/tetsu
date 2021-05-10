@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::crypto;
 
-#[allow(dead_code)]
+/// Mojang authentication server.
 pub const AUTH_SERVER: &str = "https://authserver.mojang.com/authenticate";
-#[allow(dead_code)]
+/// Mojang server session join server.
 pub const JOIN_SERVER: &str = "https://sessionserver.mojang.com/session/minecraft/join";
 
 // ----- Mojang sent info -----

@@ -23,7 +23,6 @@ pub struct Server {
     connected_user: Option<User>,
 }
 
-#[allow(dead_code)]
 impl Server {
     /// Constructs a new server object.
     /// The connection will use port `25565` if the `port` argument is `None`.

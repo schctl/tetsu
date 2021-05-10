@@ -3,7 +3,6 @@ use serde_repr::*;
 
 /// All supported protocol versions.
 #[non_exhaustive]
-#[allow(dead_code)]
 #[derive(Serialize_repr, Deserialize_repr, Debug, PartialEq, Eq, Clone)]
 #[repr(u16)]
 pub enum ProtocolVersion {
@@ -14,7 +13,6 @@ pub enum ProtocolVersion {
 }
 
 /// Types of events being sent and received.
-#[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum EventState {
     Test,
@@ -25,7 +23,6 @@ pub enum EventState {
 }
 
 /// Sender of the Event.
-#[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum EventDirection {
     /// Server sent event.

@@ -9,8 +9,10 @@ use nbt::Error as nbt_error;
 use openssl::error::ErrorStack;
 use serde_json::Error as serde_error;
 
+/// Invalid value received.
 #[derive(Debug)]
 pub struct InvalidValue {
+    /// The expected value.
     pub expected: String,
 }
 
