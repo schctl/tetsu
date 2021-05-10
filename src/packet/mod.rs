@@ -3,8 +3,8 @@
 use crate::errors::*;
 use crate::event::*;
 
-mod serializable;
-pub use serializable::*;
+mod types;
+pub use types::*;
 
 pub(crate) trait Packet: Readable + Writable {
     const ID: i32;

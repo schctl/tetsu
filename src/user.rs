@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 use crate::encryption;
 
 #[allow(dead_code)]
-const AUTH_SERVER: &str = "https://authserver.mojang.com/authenticate";
+pub const AUTH_SERVER: &str = "https://authserver.mojang.com/authenticate";
 #[allow(dead_code)]
-const JOIN_SERVER: &str = "https://sessionserver.mojang.com/session/minecraft/join";
+pub const JOIN_SERVER: &str = "https://sessionserver.mojang.com/session/minecraft/join";
 
 // ----- Mojang sent info -----
 
