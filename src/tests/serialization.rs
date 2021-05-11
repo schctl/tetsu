@@ -1,11 +1,18 @@
 #![allow(unused_imports)]
 
 use flate2::write;
+use log::info;
 use serde_json::json;
 use std::io::prelude::*;
 use std::{fs::File, io, time};
 
-use crate::{event::{self, Disconnect, Event, EventDirection, EventDispatcher, EventState, Handshake, Position, SpawnPosition}, packet::Chat};
+use crate::{
+    event::{
+        self, Disconnect, Event, EventDirection, EventDispatcher, EventState, Handshake, Position,
+        SpawnPosition,
+    },
+    packet::Chat,
+};
 
 const SER_RUNS: u128 = 50_000;
 
@@ -60,7 +67,9 @@ fn test_event_serialization() {
             let event_w = e.clone();
 
             let start = time::Instant::now();
-            event_dispatcher.writer_event(&mut buf, event_w, s, d, 0).unwrap();
+            event_dispatcher
+                .write_event(&mut buf, event_w, s, d, 0)
+                .unwrap();
             writes.push(start.elapsed().as_nanos() as u64);
         }
         buf.set_position(0);
@@ -77,11 +86,11 @@ fn test_event_serialization() {
     let mut f = File::create("target/rw.json").unwrap();
     write!(f, "{}", res).unwrap();
 
-    println!(
+    info!(
         "Read avg: {}",
         reads.iter().sum::<u64>() as f32 / writes.len() as f32
     );
-    println!(
+    info!(
         "Write avg: {}",
         writes.iter().sum::<u64>() as f32 / writes.len() as f32
     );

@@ -7,26 +7,26 @@ use std::io::Cursor;
 use tetsu::event::*;
 
 let mut connection = Cursor::new(Vec::new());
+let dispatcher: EventDispatcher<Cursor<Vec<u8>>, Cursor<Vec<u8>>> =
+    EventDispatcher::new(&ProtocolVersion::V47);
 
 // ...
 
-let write_handshake = Event::Handshake(Handshake {
+let handshake = Event::Handshake(Handshake {
     server_address: "127.0.0.1".to_owned(),
     server_port: 25565,
     next_state: EventState::Login,
-})
-.write_to(
+});
+
+dispatcher.write_event(
     &mut connection,
+     handshake,
     &EventState::Handshake,
     &EventDirection::ServerBound,
-    &ProtocolVersion::V47,
     0,
-)
-.unwrap();
+);
 ```
 */
-
-use core::f32;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
@@ -47,14 +47,14 @@ use std::io::Cursor;
 use tetsu::event::*;
 
 let mut buf = Cursor::new(Vec::new());
+let dispatcher: EventDispatcher<Cursor<Vec<u8>>, Cursor<Vec<u8>>> = EventDispatcher::new(&ProtocolVersion::V47);
 
 // ...
 
-let event = Event::read_from(
+let event = dispatcher.read_event(
     &mut buf,
     &EventState::Status,
     &EventDirection::ClientBound,
-    &ProtocolVersion::V47,
     0,
 ).unwrap();
 
@@ -92,64 +92,29 @@ pub enum Event {
     ServerDifficultyUpdate(ServerDifficultyUpdate),
 }
 
-impl Event {
-    /// Write an event to a buffer.
-    #[inline]
-    pub fn write_to<T: std::io::Write>(
-        self,
-        buf: &mut T,
-        state: &EventState,
-        direction: &EventDirection,
-        protocol: &ProtocolVersion,
-        compression_threshold: i32,
-    ) -> TetsuResult<()> {
-        match protocol {
-            ProtocolVersion::V47 => {
-                versions::v47::write_event(buf, self, state, direction, compression_threshold)
-            }
-            ProtocolVersion::V754 => {
-                versions::v754::write_event(buf, self, state, direction, compression_threshold)
-            }
-        }
-    }
-
-    /// Read an event from a buffer.
-    #[inline]
-    pub fn read_from<T: std::io::Read>(
-        buf: &mut T,
-        state: &EventState,
-        direction: &EventDirection,
-        protocol: &ProtocolVersion,
-        compression_threshold: i32,
-    ) -> TetsuResult<Self> {
-        match protocol {
-            ProtocolVersion::V47 => {
-                versions::v47::read_event(buf, state, direction, compression_threshold)
-            }
-            ProtocolVersion::V754 => {
-                versions::v754::read_event(buf, state, direction, compression_threshold)
-            }
-        }
-    }
-}
-
+/// Wrapper around protocol specific event read/write impls.
 pub struct EventDispatcher<R: std::io::Read, W: std::io::Write> {
     reader: fn(&mut R, &EventState, &EventDirection, i32) -> TetsuResult<Event>,
     writer: fn(&mut W, Event, &EventState, &EventDirection, i32) -> TetsuResult<()>,
 }
 
 impl<R: std::io::Read, W: std::io::Write> EventDispatcher<R, W> {
+    /// Create a new event dispatcher using protocol `version`.
     #[inline]
-    pub fn new(protocol_version: &ProtocolVersion) -> Self {
-        match protocol_version {
+    pub fn new(version: &ProtocolVersion) -> Self {
+        match version {
             ProtocolVersion::V47 => Self {
                 reader: versions::v47::read_event,
                 writer: versions::v47::write_event,
             },
-            _ => panic!("OK"),
+            ProtocolVersion::V754 => Self {
+                reader: versions::v754::read_event,
+                writer: versions::v754::write_event,
+            },
         }
     }
 
+    /// Read an event from the buffer.
     #[inline]
     pub fn read_event(
         &self,
@@ -161,8 +126,9 @@ impl<R: std::io::Read, W: std::io::Write> EventDispatcher<R, W> {
         (self.reader)(buf, state, direction, compression_threshold)
     }
 
+    /// Write an event to the buffer.
     #[inline]
-    pub fn writer_event(
+    pub fn write_event(
         &self,
         buf: &mut W,
         event: Event,

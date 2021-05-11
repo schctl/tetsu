@@ -65,7 +65,7 @@ impl EncryptedConnection {
     /// Send a packet to the internal `TcpStream`.
     #[inline]
     pub fn send_event(&mut self, event: Event) -> TetsuResult<()> {
-        self.dispatcher.writer_event(
+        self.dispatcher.write_event(
             &mut self.stream,
             event,
             &self.state,

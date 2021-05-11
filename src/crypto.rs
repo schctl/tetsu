@@ -6,9 +6,10 @@ use std::io;
 pub use std::net::SocketAddr;
 use std::net::TcpStream;
 
+use openssl::rsa::Padding;
+
 pub use openssl::pkey::{Private, Public};
 pub use openssl::rand::rand_bytes;
-use openssl::rsa::Padding;
 pub use openssl::rsa::Rsa;
 pub use openssl::sha::Sha1;
 

@@ -1,8 +1,8 @@
 //! Mojang user information.
 
-use serde::{Deserialize, Serialize};
-
 use crate::crypto;
+
+use serde::{Deserialize, Serialize};
 
 /// Mojang authentication server.
 pub const AUTH_SERVER: &str = "https://authserver.mojang.com/authenticate";

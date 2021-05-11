@@ -46,9 +46,10 @@ loop {
 }
 ```
 */
-
-pub mod connection;
-use connection::EncryptedConnection;
+use crate::crypto;
+use crate::errors::*;
+use crate::event::{self, Event, ProtocolVersion, ServerVersion};
+use crate::mojang::User;
 
 use std::sync::Mutex;
 use std::time;
@@ -56,16 +57,13 @@ use std::time;
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
-use crate::errors::*;
-use crate::event::{self, Event};
-use crate::{crypto, event::ServerVersion};
-use crate::{event::ProtocolVersion, mojang::User};
+pub mod connection;
 
 /// High level wrapper around a Minecraft server connection.
 pub struct Server {
     // Mutex here is for interior mutability ->
     // allows server methods such as `read_event` to be called without passing a mutable reference to self.
-    connection: Mutex<EncryptedConnection>,
+    connection: Mutex<connection::EncryptedConnection>,
     connected_address: String,
     connected_user: Option<User>,
 }
@@ -86,7 +84,7 @@ impl Server {
         };
 
         Ok(Self {
-            connection: Mutex::new(EncryptedConnection::new(
+            connection: Mutex::new(connection::EncryptedConnection::new(
                 address,
                 port,
                 match protocol {
@@ -119,13 +117,16 @@ impl Server {
 
     /// Read incoming server events.
     #[inline]
-    pub fn read_event(&self) -> Result<Event, ConnectionError<EncryptedConnection>> {
+    pub fn read_event(&self) -> Result<Event, ConnectionError<connection::EncryptedConnection>> {
         Ok(self.connection.lock()?.read_event()?)
     }
 
     /// Send an event to the server.
     #[inline]
-    pub fn send_event(&self, _event: Event) -> Result<(), ConnectionError<EncryptedConnection>> {
+    pub fn send_event(
+        &self,
+        _event: Event,
+    ) -> Result<(), ConnectionError<connection::EncryptedConnection>> {
         self.connection.lock()?.send_event(_event)?;
         Ok(())
     }
@@ -137,7 +138,8 @@ impl Server {
             _ => 25565,
         };
 
-        let mut connection = EncryptedConnection::new(address, port, event::ProtocolVersion::V47)?;
+        let mut connection =
+            connection::EncryptedConnection::new(address, port, event::ProtocolVersion::V47)?;
 
         connection.set_state(&event::EventState::Handshake);
 
@@ -169,7 +171,7 @@ impl Server {
     pub fn connect_player(
         &mut self,
         user: User,
-    ) -> Result<(), ConnectionError<EncryptedConnection>> {
+    ) -> Result<(), ConnectionError<connection::EncryptedConnection>> {
         let start = time::Instant::now();
 
         if let Some(p) = &self.connected_user {
