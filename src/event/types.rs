@@ -3,7 +3,7 @@ use serde_repr::*;
 
 /// All supported protocol versions.
 #[non_exhaustive]
-#[derive(Serialize_repr, Deserialize_repr, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize_repr, Deserialize_repr, Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(u16)]
 pub enum ProtocolVersion {
     /// Server versions 1.8-1.8.9

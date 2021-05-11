@@ -133,6 +133,47 @@ impl Event {
     }
 }
 
+pub struct EventDispatcher<R: std::io::Read, W: std::io::Write> {
+    reader: fn(&mut R, &EventState, &EventDirection, i32) -> TetsuResult<Event>,
+    writer: fn(&mut W, Event, &EventState, &EventDirection, i32) -> TetsuResult<()>,
+}
+
+impl<R: std::io::Read, W: std::io::Write> EventDispatcher<R, W> {
+    #[inline]
+    pub fn new(protocol_version: &ProtocolVersion) -> Self {
+        match protocol_version {
+            ProtocolVersion::V47 => Self {
+                reader: versions::v47::read_event,
+                writer: versions::v47::write_event,
+            },
+            _ => panic!("OK"),
+        }
+    }
+
+    #[inline]
+    pub fn read_event(
+        &self,
+        buf: &mut R,
+        state: &EventState,
+        direction: &EventDirection,
+        compression_threshold: i32,
+    ) -> TetsuResult<Event> {
+        (self.reader)(buf, state, direction, compression_threshold)
+    }
+
+    #[inline]
+    pub fn writer_event(
+        &self,
+        buf: &mut W,
+        event: Event,
+        state: &EventState,
+        direction: &EventDirection,
+        compression_threshold: i32,
+    ) -> TetsuResult<()> {
+        (self.writer)(buf, event, state, direction, compression_threshold)
+    }
+}
+
 // Status ----------
 
 /// Ping the server to make sure its alive.

@@ -1,16 +1,11 @@
 #![allow(unused_imports)]
 
-use std::io::prelude::*;
-use std::{fs::File, io, time};
 use flate2::write;
 use serde_json::json;
+use std::io::prelude::*;
+use std::{fs::File, io, time};
 
-use crate::{
-    event::{
-        self, Disconnect, Event, EventDirection, EventState, Handshake, Position, SpawnPosition,
-    },
-    packet::Chat,
-};
+use crate::{event::{self, Disconnect, Event, EventDirection, EventDispatcher, EventState, Handshake, Position, SpawnPosition}, packet::Chat};
 
 const SER_RUNS: u128 = 50_000;
 
@@ -56,6 +51,8 @@ fn test_event_serialization() {
     let mut writes = vec![];
     let mut reads = vec![];
 
+    let event_dispatcher = EventDispatcher::new(&event::ProtocolVersion::V47);
+
     for _ in 0..SER_RUNS {
         let mut buf = io::Cursor::new(Vec::new());
         // Write
@@ -63,17 +60,14 @@ fn test_event_serialization() {
             let event_w = e.clone();
 
             let start = time::Instant::now();
-            event_w
-                .write_to(&mut buf, s, d, &event::ProtocolVersion::V47, 0)
-                .unwrap();
+            event_dispatcher.writer_event(&mut buf, event_w, s, d, 0).unwrap();
             writes.push(start.elapsed().as_nanos() as u64);
         }
         buf.set_position(0);
         // Read
         for (e, s, d) in events.iter() {
             let start = time::Instant::now();
-            let event_r =
-                Event::read_from(&mut buf, s, d, &event::ProtocolVersion::V47, 0).unwrap();
+            let event_r = event_dispatcher.read_event(&mut buf, s, d, 0).unwrap();
             reads.push(start.elapsed().as_nanos() as u64);
             assert_eq!(e, &event_r);
         }
@@ -84,11 +78,11 @@ fn test_event_serialization() {
     write!(f, "{}", res).unwrap();
 
     println!(
-        "Write avg: {}",
-        writes.iter().sum::<u64>() as f32 / writes.len() as f32
-    );
-    println!(
         "Read avg: {}",
         reads.iter().sum::<u64>() as f32 / writes.len() as f32
+    );
+    println!(
+        "Write avg: {}",
+        writes.iter().sum::<u64>() as f32 / writes.len() as f32
     );
 }

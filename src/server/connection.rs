@@ -19,6 +19,7 @@ pub struct EncryptedConnection {
     pub protocol_version: ProtocolVersion,
     /// Compression threshold.
     compression_threshold: i32,
+    dispatcher: EventDispatcher<EncryptedTcpStream, EncryptedTcpStream>,
 }
 
 impl EncryptedConnection {
@@ -30,6 +31,7 @@ impl EncryptedConnection {
             state: EventState::Status,
             protocol_version,
             compression_threshold: 0,
+            dispatcher: EventDispatcher::new(&protocol_version),
         })
     }
 
@@ -52,23 +54,22 @@ impl EncryptedConnection {
     /// Read and parse a packet from the internal `TcpStream`.
     #[inline]
     pub fn read_event(&mut self) -> TetsuResult<Event> {
-        Event::read_from(
+        self.dispatcher.read_event(
             &mut self.stream,
             &self.state,
             &EventDirection::ClientBound,
-            &self.protocol_version,
             self.compression_threshold,
         )
     }
 
     /// Send a packet to the internal `TcpStream`.
     #[inline]
-    pub fn send_event(&mut self, _event: Event) -> TetsuResult<()> {
-        _event.write_to(
+    pub fn send_event(&mut self, event: Event) -> TetsuResult<()> {
+        self.dispatcher.writer_event(
             &mut self.stream,
+            event,
             &self.state,
             &EventDirection::ServerBound,
-            &self.protocol_version,
             self.compression_threshold,
         )
     }
