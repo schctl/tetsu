@@ -38,7 +38,7 @@ let user = mojang::User::authenticate(
 );
 
 let mut server = server::Server::new("127.0.0.1", None, None).unwrap();
-server.connect_player(user).unwrap();
+server.connect_user(user).unwrap();
 
 loop {
     let event = server.read_event().unwrap();
@@ -168,7 +168,7 @@ impl Server {
     }
 
     /// Connect a user to the server. Only one user can be connected at a time.
-    pub fn connect_player(
+    pub fn connect_user(
         &mut self,
         user: User,
     ) -> Result<(), ConnectionError<connection::EncryptedConnection>> {

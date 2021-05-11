@@ -68,6 +68,7 @@ impl DefaultStreamCipher {
 }
 
 /// Return a string of hex characters of a [`Sha1`] hash.
+///
 /// Based on Minecraft's implementation:
 /// From https://wiki.vg/Protocol_Encryption#Authentication:
 /// > Note that the Sha1.hexdigest() method used by minecraft is non standard.

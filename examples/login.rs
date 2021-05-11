@@ -20,7 +20,7 @@ fn main() {
 
     let mut server = server::Server::new("127.0.0.1", None, None).unwrap();
 
-    server.connect_player(user).unwrap();
+    server.connect_user(user).unwrap();
 
     loop {
         match server.read_event() {

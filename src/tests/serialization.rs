@@ -8,7 +8,7 @@ use std::{fs::File, io, time};
 
 use crate::{
     event::{
-        self, Disconnect, Event, EventDirection, EventDispatcher, EventState, Handshake, Position,
+        self, Disconnect, Event, EventDirection, dispatcher::EventDispatcher, EventState, Handshake, Position,
         SpawnPosition,
     },
     packet::Chat,

@@ -19,7 +19,7 @@ pub struct EncryptedConnection {
     pub protocol_version: ProtocolVersion,
     /// Compression threshold.
     compression_threshold: i32,
-    dispatcher: EventDispatcher<EncryptedTcpStream, EncryptedTcpStream>,
+    dispatcher: dispatcher::EventDispatcher<EncryptedTcpStream, EncryptedTcpStream>,
 }
 
 impl EncryptedConnection {
@@ -31,7 +31,7 @@ impl EncryptedConnection {
             state: EventState::Status,
             protocol_version,
             compression_threshold: 0,
-            dispatcher: EventDispatcher::new(&protocol_version),
+            dispatcher: dispatcher::EventDispatcher::new(&protocol_version),
         })
     }
 
