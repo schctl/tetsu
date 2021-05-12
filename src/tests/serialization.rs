@@ -1,20 +1,21 @@
 #![allow(unused_imports)]
 
-use flate2::write;
 use log::info;
+
 use serde_json::json;
+
+use std::collections::HashMap;
+use std::fs::File;
+use std::io;
 use std::io::prelude::*;
-use std::{fs::File, io, time};
 
-use crate::{
-    event::{
-        self, Disconnect, Event, EventDirection, dispatcher::EventDispatcher, EventState, Handshake, Position,
-        SpawnPosition,
-    },
-    packet::Chat,
+use crate::event::{
+    self, dispatcher::EventDispatcher, Disconnect, Event, EventDirection, EventState, Handshake,
+    KeepAlive, PlayerAbility, Position, SpawnPosition, Statistic, Statistics,
 };
+use crate::packet::Chat;
 
-const SER_RUNS: u128 = 50_000;
+const SER_RUNS: usize = 4_096;
 
 #[test]
 fn test_event_serialization() {
@@ -33,6 +34,7 @@ fn test_event_serialization() {
             }),
             EventState::Play,
             EventDirection::ClientBound,
+            "SpawnPosition",
         ),
         (
             Event::Handshake(Handshake {
@@ -42,6 +44,7 @@ fn test_event_serialization() {
             }),
             EventState::Handshake,
             EventDirection::ServerBound,
+            "Handshake",
         ),
         (
             Event::Disconnect(Disconnect {
@@ -52,46 +55,84 @@ fn test_event_serialization() {
             }),
             EventState::Login,
             EventDirection::ClientBound,
+            "Disconnect",
+        ),
+        (
+            Event::KeepAlive(KeepAlive { id: 120 }),
+            EventState::Play,
+            EventDirection::ClientBound,
+            "KeepAlive",
+        ),
+        (
+            Event::PlayerAbility(PlayerAbility {
+                invulnerable: false,
+                is_flying: false,
+                allow_flying: false,
+                creative_mode: true,
+                flying_speed: 1.2,
+                walking_speed: 0.7,
+            }),
+            EventState::Play,
+            EventDirection::ClientBound,
+            "PlayerAbility",
+        ),
+        (
+            Event::Statistics(Statistics {
+                values: vec![Statistic {
+                    name: "minecraft:something".to_owned(),
+                    value: 128,
+                }],
+            }),
+            EventState::Play,
+            EventDirection::ClientBound,
+            "Statistics",
         ),
     ];
 
-    let mut writes = vec![];
-    let mut reads = vec![];
+    let mut times: HashMap<String, (Vec<u64>, Vec<u64>)> = HashMap::new();
+
+    for (_, _, _, s) in events.iter() {
+        times.insert(s.to_string(), (vec![], vec![]));
+    }
 
     let event_dispatcher = EventDispatcher::new(&event::ProtocolVersion::V47);
 
     for _ in 0..SER_RUNS {
         let mut buf = io::Cursor::new(Vec::new());
-        // Write
-        for (e, s, d) in events.iter() {
-            let event_w = e.clone();
 
-            let start = time::Instant::now();
+        // Write
+        for (e, s, d, name) in events.iter() {
+            let event_w = e.clone();
+            let start = std::time::Instant::now();
+
             event_dispatcher
                 .write_event(&mut buf, event_w, s, d, 0)
                 .unwrap();
-            writes.push(start.elapsed().as_nanos() as u64);
+
+            times
+                .get_mut(&name.to_string())
+                .unwrap()
+                .0
+                .push(start.elapsed().as_nanos() as u64);
         }
+
         buf.set_position(0);
+
         // Read
-        for (e, s, d) in events.iter() {
-            let start = time::Instant::now();
+        for (e, s, d, name) in events.iter() {
+            let start = std::time::Instant::now();
+
             let event_r = event_dispatcher.read_event(&mut buf, s, d, 0).unwrap();
-            reads.push(start.elapsed().as_nanos() as u64);
+
+            times
+                .get_mut(&name.to_string())
+                .unwrap()
+                .1
+                .push(start.elapsed().as_nanos() as u64);
+
             assert_eq!(e, &event_r);
         }
     }
 
-    let res = json!([reads, writes]);
-    let mut f = File::create("target/rw.json").unwrap();
-    write!(f, "{}", res).unwrap();
-
-    info!(
-        "Read avg: {}",
-        reads.iter().sum::<u64>() as f32 / writes.len() as f32
-    );
-    info!(
-        "Write avg: {}",
-        writes.iter().sum::<u64>() as f32 / writes.len() as f32
-    );
+    write!(File::create("target/rw.json").unwrap(), "{}", json!(times)).unwrap();
 }

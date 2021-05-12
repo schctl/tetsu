@@ -3,7 +3,7 @@ Server-client communication types.
 
 # Examples
 
-## Using a [`dispatcher::EventDispatcher`] to send events.
+## Using an `EventDispatcher` to send events.
 ```
 use std::io::Cursor;
 use tetsu::event::*;
@@ -37,8 +37,9 @@ use crate::errors::*;
 use crate::packet::*;
 use crate::versions;
 
-mod types;
 pub mod dispatcher;
+mod types;
+
 pub use types::*;
 
 /**
@@ -94,6 +95,9 @@ pub enum Event {
     PluginMessage(PluginMessage),
     ServerDifficultyUpdate(ServerDifficultyUpdate),
 }
+
+unsafe impl Send for Event {}
+unsafe impl Sync for Event {}
 
 // Status ----------
 

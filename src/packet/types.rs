@@ -236,8 +236,8 @@ impl Readable for String {
     #[inline]
     fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
         let len = VarInt::read_from(buf)?.0;
-        let mut bytes = Vec::<u8>::new();
-        buf.take(len as u64).read_to_end(&mut bytes)?;
+        let mut bytes = vec![0; len as usize];
+        buf.read_exact(&mut bytes)?;
         Ok(Self::from_utf8(bytes)?)
     }
 }

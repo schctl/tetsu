@@ -24,6 +24,7 @@ mod internal {
     }
 
     impl From<Position> for PositionXYZ {
+        #[inline]
         fn from(item: Position) -> Self {
             Self {
                 x: item.x,
@@ -34,6 +35,7 @@ mod internal {
     }
 
     impl From<PositionXYZ> for Position {
+        #[inline]
         fn from(item: PositionXYZ) -> Self {
             Self {
                 x: item.x,
@@ -60,6 +62,7 @@ mod internal {
     }
 
     impl Writable for PositionXYZ {
+        #[inline]
         fn write_to<T: io::Write>(&self, buf: &mut T) -> Result<(), Error> {
             Ok(buf.write_i64::<BigEndian>(
                 ((self.x & 0x3FFFFFF) << 38) | ((self.y & 0xFFF) << 26) | (self.z & 0x3FFFFFF),
@@ -74,6 +77,7 @@ mod internal {
     }
 
     impl From<Statistic> for StatisticString {
+        #[inline]
         fn from(item: Statistic) -> Self {
             Self {
                 name: item.name,
@@ -83,6 +87,7 @@ mod internal {
     }
 
     impl From<StatisticString> for Statistic {
+        #[inline]
         fn from(item: StatisticString) -> Self {
             Self {
                 name: item.name,
@@ -92,6 +97,7 @@ mod internal {
     }
 
     impl Readable for StatisticString {
+        #[inline]
         fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
             let name = String::read_from(buf)?;
             let value = VarInt::read_from(buf)?;
@@ -100,6 +106,7 @@ mod internal {
     }
 
     impl Writable for StatisticString {
+        #[inline]
         fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
             self.name.write_to(buf)?;
             self.value.write_to(buf)
@@ -108,6 +115,7 @@ mod internal {
 
     // Conversions ---
 
+    #[inline]
     pub fn byte_to_gamemode(byte: UnsignedByte) -> Gamemode {
         match byte {
             0 => Gamemode::Survival,
@@ -118,6 +126,7 @@ mod internal {
         }
     }
 
+    #[inline]
     pub fn gamemode_to_byte(gamemode: &Gamemode) -> UnsignedByte {
         match gamemode {
             Gamemode::Survival => 0,
@@ -127,6 +136,7 @@ mod internal {
         }
     }
 
+    #[inline]
     pub fn byte_to_dimension(byte: Byte) -> Dimension {
         match byte {
             -1 => Dimension::Nether,
@@ -136,6 +146,7 @@ mod internal {
         }
     }
 
+    #[inline]
     pub fn dimension_to_byte(dimension: &Dimension) -> Byte {
         match dimension {
             Dimension::Nether => -1,
@@ -144,6 +155,7 @@ mod internal {
         }
     }
 
+    #[inline]
     pub fn byte_to_difficulty(byte: UnsignedByte) -> Difficulty {
         match byte {
             0 => Difficulty::Peaceful,
@@ -154,6 +166,7 @@ mod internal {
         }
     }
 
+    #[inline]
     pub fn difficulty_to_byte(difficulty: &Difficulty) -> UnsignedByte {
         match difficulty {
             Difficulty::Peaceful => 0,

@@ -6,6 +6,9 @@ pub struct EventDispatcher<R: std::io::Read, W: std::io::Write> {
     writer: fn(&mut W, Event, &EventState, &EventDirection, i32) -> TetsuResult<()>,
 }
 
+unsafe impl<R: std::io::Read, W: std::io::Write> Send for EventDispatcher<R, W> {}
+unsafe impl<R: std::io::Read, W: std::io::Write> Sync for EventDispatcher<R, W> {}
+
 impl<R: std::io::Read, W: std::io::Write> EventDispatcher<R, W> {
     /// Create a new event dispatcher using protocol `version`.
     #[inline]
@@ -20,6 +23,15 @@ impl<R: std::io::Read, W: std::io::Write> EventDispatcher<R, W> {
                 writer: versions::v754::write_event,
             },
         }
+    }
+
+    /// Create a new [`EventDispatcher`] from any read/write functions.
+    #[inline]
+    pub fn new_from_raw(
+        reader: fn(&mut R, &EventState, &EventDirection, i32) -> TetsuResult<Event>,
+        writer: fn(&mut W, Event, &EventState, &EventDirection, i32) -> TetsuResult<()>,
+    ) -> TetsuResult<Self> {
+        Ok(Self { reader, writer })
     }
 
     /// Read an event from the buffer.

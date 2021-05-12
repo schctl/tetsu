@@ -59,7 +59,7 @@ pub enum Difficulty {
     Hard,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(untagged)]
 pub enum ServerDescription {
     Short(String),
@@ -67,26 +67,26 @@ pub enum ServerDescription {
 }
 
 /// Long server description. All fields haven't been covered yet.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ServerDescriptionLong {
     pub text: String,
 }
 
 /// General server player information.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ServerPlayers {
     pub max: u32,
     pub online: u16,
 }
 
 /// Version the server is running on.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ServerVersion {
     pub name: String,
     pub protocol: ProtocolVersion,
 }
 /// Server information such as version, online players, etc.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ServerInformation {
     pub description: ServerDescription,
     pub players: ServerPlayers,
