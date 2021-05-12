@@ -190,16 +190,16 @@ protocol_impl! {
 
     (0x01) ServerBound Status StatusPingPacket: Ping {
         from_event {
-            | origin: Ping | -> TetsuResult<StatusPingPacket> {
+            fn try_from(item: Ping) -> TetsuResult<StatusPingPacket> {
                 Ok(StatusPingPacket {
-                    payload: origin.payload
+                    payload: item.payload
                 })
             }
         }
         to_event {
-            | origin: StatusPingPacket | -> TetsuResult<Event> {
+            fn try_from(item: StatusPingPacket) -> TetsuResult<Event> {
                 Ok(Event::Ping(Ping {
-                    payload: origin.payload
+                    payload: item.payload
                 }))
             }
         }
@@ -210,16 +210,16 @@ protocol_impl! {
 
     (0x01) ClientBound Status StatusPongPacket: Pong {
         from_event {
-            | origin: Pong | -> TetsuResult<StatusPongPacket> {
+            fn try_from(item: Pong) -> TetsuResult<StatusPongPacket> {
                 Ok(StatusPongPacket {
-                    payload: origin.payload
+                    payload: item.payload
                 })
             }
         }
         to_event {
-            | origin: StatusPongPacket | -> TetsuResult<Event> {
+            fn try_from(item: StatusPongPacket) -> TetsuResult<Event> {
                 Ok(Event::Pong(Pong {
-                    payload: origin.payload
+                    payload: item.payload
                 }))
             }
         }
@@ -230,12 +230,12 @@ protocol_impl! {
 
     (0x00) ServerBound Status StatusRequestPacket: StatusRequest {
         from_event {
-            | _: StatusRequest | -> TetsuResult<StatusRequestPacket> {
+            fn try_from(_: StatusRequest) -> TetsuResult<StatusRequestPacket> {
                 Ok(StatusRequestPacket {})
             }
         }
         to_event {
-            | _: StatusRequestPacket | -> TetsuResult<Event> {
+            fn try_from(_: StatusRequestPacket) -> TetsuResult<Event> {
                 Ok(Event::StatusRequest(StatusRequest {}))
             }
         }
@@ -246,16 +246,16 @@ protocol_impl! {
 
     (0x00) ClientBound Status StatusResponsePacket: StatusResponse {
         from_event {
-            | origin: StatusResponse | -> TetsuResult<StatusResponsePacket> {
+            fn try_from(item: StatusResponse) -> TetsuResult<StatusResponsePacket> {
                 Ok(StatusResponsePacket {
-                    response: serde_json::to_string(&origin.response).unwrap()
+                    response: serde_json::to_string(&item.response).unwrap()
                 })
             }
         }
         to_event {
-            | origin: StatusResponsePacket | -> TetsuResult<Event> {
+            fn try_from(item: StatusResponsePacket) -> TetsuResult<Event> {
                 Ok(Event::StatusResponse(StatusResponse {
-                    response: serde_json::from_str(&origin.response[..]).unwrap()
+                    response: serde_json::from_str(&item.response[..]).unwrap()
                 }))
             }
         }
@@ -268,12 +268,12 @@ protocol_impl! {
 
     (0x00) ServerBound Handshake HandshakePacket: Handshake {
         from_event {
-            | origin: Handshake | -> TetsuResult<HandshakePacket> {
+            fn try_from(item: Handshake) -> TetsuResult<HandshakePacket> {
                 Ok(HandshakePacket {
                     protocol_version: VarInt(47),
-                    server_address: origin.server_address,
-                    server_port: origin.server_port,
-                    next_state: match origin.next_state {
+                    server_address: item.server_address,
+                    server_port: item.server_port,
+                    next_state: match item.next_state {
                         EventState::Status => VarInt(1),
                         EventState::Login => VarInt(2),
                         _ => return Err(Error::from(InvalidValue { expected: "Status or Login".to_owned() }))
@@ -282,11 +282,11 @@ protocol_impl! {
             }
         }
         to_event {
-            | origin: HandshakePacket | -> TetsuResult<Event> {
+            fn try_from(item: HandshakePacket) -> TetsuResult<Event> {
                 Ok(Event::Handshake(Handshake {
-                    server_address: origin.server_address,
-                    server_port: origin.server_port,
-                    next_state: match origin.next_state.0 {
+                    server_address: item.server_address,
+                    server_port: item.server_port,
+                    next_state: match item.next_state.0 {
                         1 => EventState::Status,
                         2 => EventState::Login,
                         _ => return Err(Error::from(InvalidValue { expected: "1 or 2".to_owned() }))
@@ -306,16 +306,16 @@ protocol_impl! {
 
     (0x00) ServerBound Login LoginStartPacket: LoginStart {
         from_event {
-            | origin: LoginStart | -> TetsuResult<LoginStartPacket> {
+            fn try_from(item: LoginStart) -> TetsuResult<LoginStartPacket> {
                 Ok(LoginStartPacket {
-                    name: origin.name
+                    name: item.name
                 })
             }
         }
         to_event {
-            | origin: LoginStartPacket | -> TetsuResult<Event> {
+            fn try_from(item: LoginStartPacket) -> TetsuResult<Event> {
                 Ok(Event::LoginStart(LoginStart {
-                    name: origin.name
+                    name: item.name
                 }))
             }
         }
@@ -326,9 +326,9 @@ protocol_impl! {
 
     (0x00) ClientBound Login DisconnectPacket: Disconnect {
         from_event {
-            | origin: Disconnect | -> TetsuResult<DisconnectPacket> {
+            fn try_from(item: Disconnect) -> TetsuResult<DisconnectPacket> {
                 Ok(DisconnectPacket {
-                    reason: match origin.reason.text {
+                    reason: match item.reason.text {
                         Some(t) => t,
                         None => panic!("Unknown reason")
                     }
@@ -336,10 +336,10 @@ protocol_impl! {
             }
         }
         to_event {
-            | origin: DisconnectPacket | -> TetsuResult<Event> {
+            fn try_from(item: DisconnectPacket) -> TetsuResult<Event> {
                 Ok(Event::Disconnect(Disconnect {
                     reason: Chat {
-                        text: Some(origin.reason),
+                        text: Some(item.reason),
                         translate: None,
                         bold: None,
                         italic: None,
@@ -361,20 +361,20 @@ protocol_impl! {
 
     (0x01) ClientBound Login EncryptionRequestVarIntPacket: EncryptionRequest {
         from_event {
-            | origin: EncryptionRequest | -> TetsuResult<EncryptionRequestVarIntPacket> {
+            fn try_from(item: EncryptionRequest) -> TetsuResult<EncryptionRequestVarIntPacket> {
                Ok( EncryptionRequestVarIntPacket {
-                    server_id: origin.server_id,
-                    public_key: ByteArrayVarInt(origin.public_key.len(), origin.public_key),
-                    verify_token: ByteArrayVarInt(origin.verify_token.len(), origin.verify_token)
+                    server_id: item.server_id,
+                    public_key: ByteArrayVarInt(item.public_key.len(), item.public_key),
+                    verify_token: ByteArrayVarInt(item.verify_token.len(), item.verify_token)
                 })
             }
         }
         to_event {
-            | origin: EncryptionRequestVarIntPacket | -> TetsuResult<Event> {
+            fn try_from(item: EncryptionRequestVarIntPacket) -> TetsuResult<Event> {
                 Ok(Event::EncryptionRequest(EncryptionRequest {
-                    server_id: origin.server_id,
-                    public_key: origin.public_key.1,
-                    verify_token: origin.verify_token.1
+                    server_id: item.server_id,
+                    public_key: item.public_key.1,
+                    verify_token: item.verify_token.1
                 }))
             }
         }
@@ -387,18 +387,18 @@ protocol_impl! {
 
     (0x01) ServerBound Login EncryptionResponseVarIntPacket: EncryptionResponse {
         from_event {
-            | origin: EncryptionResponse | -> TetsuResult<EncryptionResponseVarIntPacket> {
+            fn try_from(item: EncryptionResponse) -> TetsuResult<EncryptionResponseVarIntPacket> {
                 Ok(EncryptionResponseVarIntPacket {
-                    shared_secret: ByteArrayVarInt(origin.shared_secret.len(), origin.shared_secret),
-                    verify_token: ByteArrayVarInt(origin.verify_token.len(), origin.verify_token)
+                    shared_secret: ByteArrayVarInt(item.shared_secret.len(), item.shared_secret),
+                    verify_token: ByteArrayVarInt(item.verify_token.len(), item.verify_token)
                 })
             }
         }
         to_event {
-            | origin: EncryptionResponseVarIntPacket | -> TetsuResult<Event> {
+            fn try_from(item: EncryptionResponseVarIntPacket) -> TetsuResult<Event> {
                 Ok(Event::EncryptionResponse(EncryptionResponse {
-                    shared_secret: origin.shared_secret.1,
-                    verify_token: origin.verify_token.1
+                    shared_secret: item.shared_secret.1,
+                    verify_token: item.verify_token.1
                 }))
             }
         }
@@ -410,18 +410,18 @@ protocol_impl! {
 
     (0x02) ClientBound Login LoginSuccessPacket: LoginSuccess {
         from_event {
-            | origin: LoginSuccess | -> TetsuResult<LoginSuccessPacket> {
+            fn try_from(item: LoginSuccess) -> TetsuResult<LoginSuccessPacket> {
                 Ok(LoginSuccessPacket {
-                    uuid: origin.uuid.to_hyphenated().to_string(),
-                    name: origin.name
+                    uuid: item.uuid.to_hyphenated().to_string(),
+                    name: item.name
                 })
             }
         }
         to_event {
-            | origin: LoginSuccessPacket | -> TetsuResult<Event> {
+            fn try_from(item: LoginSuccessPacket) -> TetsuResult<Event> {
                 Ok(Event::LoginSuccess(LoginSuccess {
-                    uuid: Uuid::parse_str(&origin.uuid[..]).unwrap(),
-                    name: origin.name,
+                    uuid: Uuid::parse_str(&item.uuid[..]).unwrap(),
+                    name: item.name,
                 }))
             }
         }
@@ -433,16 +433,16 @@ protocol_impl! {
 
     (0x03) ClientBound Login SetCompressionPacket: SetCompression {
         from_event {
-            | origin: SetCompression | -> TetsuResult<SetCompressionPacket> {
+            fn try_from(item: SetCompression) -> TetsuResult<SetCompressionPacket> {
                 Ok(SetCompressionPacket {
-                    threshold: VarInt(origin.threshold)
+                    threshold: VarInt(item.threshold)
                 })
             }
         }
         to_event {
-            | origin: SetCompressionPacket | -> TetsuResult<Event> {
+            fn try_from(item: SetCompressionPacket) -> TetsuResult<Event> {
                 Ok(Event::SetCompression(SetCompression {
-                    threshold: origin.threshold.0
+                    threshold: item.threshold.0
                 }))
             }
         }
@@ -455,16 +455,16 @@ protocol_impl! {
 
     (0x00) ClientBound Play KeepAlivePacket: KeepAlive {
         from_event {
-            | origin: KeepAlive | -> TetsuResult<KeepAlivePacket> {
+            fn try_from(item: KeepAlive) -> TetsuResult<KeepAlivePacket> {
                 Ok(KeepAlivePacket {
-                    id: VarInt(origin.id as i32)
+                    id: VarInt(item.id as i32)
                 })
             }
         }
         to_event {
-            | origin: KeepAlivePacket | -> TetsuResult<Event> {
+            fn try_from(item: KeepAlivePacket) -> TetsuResult<Event> {
                 Ok(Event::KeepAlive(KeepAlive {
-                    id: origin.id.0 as i64
+                    id: item.id.0 as i64
                 }))
             }
         }
@@ -475,29 +475,29 @@ protocol_impl! {
 
     (0x01) ClientBound Play JoinGamePacket: JoinGame {
         from_event {
-            | origin: JoinGame | -> TetsuResult<JoinGamePacket> {
+            fn try_from(item: JoinGame) -> TetsuResult<JoinGamePacket> {
                 Ok(JoinGamePacket {
-                    id: origin.id,
-                    gamemode: gamemode_to_byte(&origin.gamemode) | (if origin.is_hardcore { 0x80 } else { 0x00 }),
-                    dimension: dimension_to_byte(&origin.dimension),
-                    difficulty: difficulty_to_byte(&origin.difficulty),
-                    max_players: origin.max_players as u8,
-                    level_type: origin.world_type,
-                    reduced_debug: origin.reduced_debug
+                    id: item.id,
+                    gamemode: gamemode_to_byte(&item.gamemode) | (if item.is_hardcore { 0x80 } else { 0x00 }),
+                    dimension: dimension_to_byte(&item.dimension),
+                    difficulty: difficulty_to_byte(&item.difficulty),
+                    max_players: item.max_players as u8,
+                    level_type: item.world_type,
+                    reduced_debug: item.reduced_debug
                 })
             }
         }
         to_event {
-            | origin: JoinGamePacket | -> TetsuResult<Event> {
+            fn try_from(item: JoinGamePacket) -> TetsuResult<Event> {
                 Ok(Event::JoinGame(JoinGame {
-                    id: origin.id,
-                    gamemode: byte_to_gamemode(origin.gamemode),
-                    is_hardcore: origin.gamemode & 0x80 == 0x80,
-                    dimension: byte_to_dimension(origin.dimension),
-                    difficulty: byte_to_difficulty(origin.difficulty),
-                    max_players: origin.max_players as u32,
-                    world_type: origin.level_type,
-                    reduced_debug: origin.reduced_debug
+                    id: item.id,
+                    gamemode: byte_to_gamemode(item.gamemode),
+                    is_hardcore: item.gamemode & 0x80 == 0x80,
+                    dimension: byte_to_dimension(item.dimension),
+                    difficulty: byte_to_difficulty(item.difficulty),
+                    max_players: item.max_players as u32,
+                    world_type: item.level_type,
+                    reduced_debug: item.reduced_debug
                 }))
             }
         }
@@ -514,16 +514,16 @@ protocol_impl! {
 
     (0x05) ClientBound Play SpawnPositionPacket: SpawnPosition {
         from_event {
-            | origin: SpawnPosition | -> TetsuResult<SpawnPositionPacket> {
+            fn try_from(item: SpawnPosition) -> TetsuResult<SpawnPositionPacket> {
                 Ok(SpawnPositionPacket {
-                    location: origin.location.into()
+                    location: item.location.into()
                 })
             }
         }
         to_event {
-            | origin: SpawnPositionPacket | -> TetsuResult<Event> {
+            fn try_from(item: SpawnPositionPacket) -> TetsuResult<Event> {
                 Ok(Event::SpawnPosition(SpawnPosition {
-                    location: origin.location.into()
+                    location: item.location.into()
                 }))
             }
         }
@@ -534,16 +534,16 @@ protocol_impl! {
 
     (0x09) ClientBound Play HeldItemChangePacket: HeldItemChange {
         from_event {
-            | origin: HeldItemChange | -> TetsuResult<HeldItemChangePacket> {
+            fn try_from(item: HeldItemChange) -> TetsuResult<HeldItemChangePacket> {
                 Ok(HeldItemChangePacket {
-                    slot: origin.slot
+                    slot: item.slot
                 })
             }
         }
         to_event {
-            | origin: HeldItemChangePacket | -> TetsuResult<Event> {
+            fn try_from(item: HeldItemChangePacket) -> TetsuResult<Event> {
                 Ok(Event::HeldItemChange(HeldItemChange {
-                    slot: origin.slot
+                    slot: item.slot
                 }))
             }
         }
@@ -554,17 +554,17 @@ protocol_impl! {
 
     (0x37) ClientBound Play StatisticsPacket: Statistics {
         from_event {
-            | origin: Statistics | -> TetsuResult<StatisticsPacket> {
-                let values: Vec<StatisticString> = origin.values.into_iter().map(|s| -> StatisticString { s.into() }).collect();
+            fn try_from(item: Statistics) -> TetsuResult<StatisticsPacket> {
+                let values: Vec<StatisticString> = item.values.into_iter().map(|s| -> StatisticString { s.into() }).collect();
                 Ok(StatisticsPacket {
                     values: GenericArray::from(values)
                 })
             }
         }
         to_event {
-            | origin: StatisticsPacket | -> TetsuResult<Event> {
+            fn try_from(item: StatisticsPacket) -> TetsuResult<Event> {
                 Ok(Event::Statistics(Statistics {
-                    values: origin.values.1.into_iter().map(|s| -> Statistic { s.into() }).collect()
+                    values: item.values.1.into_iter().map(|s| -> Statistic { s.into() }).collect()
                 }))
             }
         }
@@ -575,26 +575,26 @@ protocol_impl! {
 
     (0x39) ClientBound Play PlayerAbilityPacket: PlayerAbility {
         from_event {
-            | origin: PlayerAbility | -> TetsuResult<PlayerAbilityPacket> {
+            fn try_from(item: PlayerAbility) -> TetsuResult<PlayerAbilityPacket> {
                 Ok(PlayerAbilityPacket {
-                    flags: (if origin.invulnerable { 0x01 } else { 0x00 })
-                         | (if origin.is_flying { 0x02 } else { 0x00 })
-                         | (if origin.allow_flying { 0x04 } else { 0x00 })
-                         | (if origin.creative_mode { 0x08 } else { 0x00 }),
-                    flying_speed: origin.flying_speed,
-                    walking_speed: origin.walking_speed
+                    flags: (if item.invulnerable { 0x01 } else { 0x00 })
+                         | (if item.is_flying { 0x02 } else { 0x00 })
+                         | (if item.allow_flying { 0x04 } else { 0x00 })
+                         | (if item.creative_mode { 0x08 } else { 0x00 }),
+                    flying_speed: item.flying_speed,
+                    walking_speed: item.walking_speed
                 })
             }
         }
         to_event {
-            | origin: PlayerAbilityPacket | -> TetsuResult<Event> {
+            fn try_from(item: PlayerAbilityPacket) -> TetsuResult<Event> {
                 Ok(Event::PlayerAbility(PlayerAbility {
-                    invulnerable: origin.flags & 0x01 == 0x01,
-                    is_flying: origin.flags & 0x02 == 0x02,
-                    allow_flying: origin.flags & 0x04 == 0x04,
-                    creative_mode: origin.flags & 0x08 == 0x08,
-                    flying_speed: origin.flying_speed,
-                    walking_speed: origin.walking_speed
+                    invulnerable: item.flags & 0x01 == 0x01,
+                    is_flying: item.flags & 0x02 == 0x02,
+                    allow_flying: item.flags & 0x04 == 0x04,
+                    creative_mode: item.flags & 0x08 == 0x08,
+                    flying_speed: item.flying_speed,
+                    walking_speed: item.walking_speed
                 }))
             }
         }
@@ -607,18 +607,18 @@ protocol_impl! {
 
     (0x3F) ClientBound Play PluginMessagePacket: PluginMessage {
         from_event {
-            | origin: PluginMessage | -> TetsuResult<PluginMessagePacket> {
+            fn try_from(item: PluginMessage) -> TetsuResult<PluginMessagePacket> {
                 Ok(PluginMessagePacket {
-                    channel: origin.channel,
-                    data: origin.data
+                    channel: item.channel,
+                    data: item.data
                 })
             }
         }
         to_event {
-            | origin: PluginMessagePacket | -> TetsuResult<Event> {
+            fn try_from(item: PluginMessagePacket) -> TetsuResult<Event> {
                 Ok(Event::PluginMessage(PluginMessage {
-                    channel: origin.channel,
-                    data: origin.data
+                    channel: item.channel,
+                    data: item.data
                 }))
             }
         }
@@ -630,16 +630,16 @@ protocol_impl! {
 
     (0x41) ClientBound Play ServerDifficultyUpdatePacket: ServerDifficultyUpdate {
         from_event {
-            | origin: ServerDifficultyUpdate | -> TetsuResult<ServerDifficultyUpdatePacket> {
+            fn try_from(item: ServerDifficultyUpdate) -> TetsuResult<ServerDifficultyUpdatePacket> {
                 Ok(ServerDifficultyUpdatePacket {
-                    difficulty: difficulty_to_byte(&origin.difficulty)
+                    difficulty: difficulty_to_byte(&item.difficulty)
                 })
             }
         }
         to_event {
-            | origin: ServerDifficultyUpdatePacket | -> TetsuResult<Event> {
+            fn try_from(item: ServerDifficultyUpdatePacket) -> TetsuResult<Event> {
                 Ok(Event::ServerDifficultyUpdate(ServerDifficultyUpdate {
-                    difficulty: byte_to_difficulty(origin.difficulty),
+                    difficulty: byte_to_difficulty(item.difficulty),
                     difficulty_locked: false
                 }))
             }

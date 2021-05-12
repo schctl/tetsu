@@ -26,14 +26,20 @@ def plot():
             for j in i:
                 event_type = list(data.keys())[index]
 
-                j.plot(data[event_type][0])
-                j.plot(data[event_type][1])
+                read_times = data[event_type][0]
+                write_times = data[event_type][1]
+
+                j.plot(read_times)
+                j.plot(write_times)
 
                 j.set_ylim([100, ylim])
                 j.set_xlabel("Run")
                 j.set_ylabel("ns")
                 j.legend(["Read", "Write"])
                 j.set_title(event_type)
+
+                print("[{}] Average Read: {}", event_type, sum(read_times) / len(read_times))
+                print("[{}] Average Write: {}", event_type, sum(write_times) / len(write_times))
 
                 index += 1
                 if index >= len(data):

@@ -31,12 +31,12 @@ protocol_impl! {
 
     (0x00) ServerBound Handshake HandshakePacket: Handshake {
         from_event {
-            | origin: Handshake | -> TetsuResult<HandshakePacket> {
+            fn try_from(item: Handshake) -> TetsuResult<HandshakePacket> {
                 Ok(HandshakePacket {
                     protocol_version: VarInt(754),
-                    server_address: origin.server_address,
-                    server_port: origin.server_port,
-                    next_state: match origin.next_state {
+                    server_address: item.server_address,
+                    server_port: item.server_port,
+                    next_state: match item.next_state {
                         EventState::Status => VarInt(1),
                         EventState::Login => VarInt(2),
                         _ => return Err(Error::from(InvalidValue { expected: "Status or Login".to_owned() }))
@@ -45,11 +45,11 @@ protocol_impl! {
             }
         }
         to_event {
-            | origin: HandshakePacket | -> TetsuResult<Event> {
+            fn try_from(item: HandshakePacket) -> TetsuResult<Event> {
                 Ok(Event::Handshake(Handshake {
-                    server_address: origin.server_address,
-                    server_port: origin.server_port,
-                    next_state: match origin.next_state.0 {
+                    server_address: item.server_address,
+                    server_port: item.server_port,
+                    next_state: match item.next_state.0 {
                         1 => EventState::Status,
                         2 => EventState::Login,
                         _ => return Err(Error::from(InvalidValue { expected: "1 or 2".to_owned() }))
@@ -69,18 +69,18 @@ protocol_impl! {
 
     (0x02) ClientBound Login LoginSuccessPacket: LoginSuccess {
         from_event {
-            | origin: LoginSuccess | -> TetsuResult<LoginSuccessPacket> {
+            fn try_from(item: LoginSuccess) -> TetsuResult<LoginSuccessPacket> {
                 Ok(LoginSuccessPacket {
-                    uuid: origin.uuid,
-                    name: origin.name
+                    uuid: item.uuid,
+                    name: item.name
                 })
             }
         }
         to_event {
-            | origin: LoginSuccessPacket | -> TetsuResult<Event> {
+            fn try_from(item: LoginSuccessPacket) -> TetsuResult<Event> {
                 Ok(Event::LoginSuccess(LoginSuccess {
-                    uuid: origin.uuid,
-                    name: origin.name,
+                    uuid: item.uuid,
+                    name: item.name,
                 }))
             }
         }
@@ -92,16 +92,16 @@ protocol_impl! {
 
     (0x00) ClientBound Login DisconnectPacket: Disconnect {
         from_event {
-            | origin: Disconnect | -> TetsuResult<DisconnectPacket> {
+            fn try_from(item: Disconnect) -> TetsuResult<DisconnectPacket> {
                 Ok(DisconnectPacket {
-                    reason: origin.reason
+                    reason: item.reason
                 })
             }
         }
         to_event {
-            | origin: DisconnectPacket | -> TetsuResult<Event> {
+            fn try_from(item: DisconnectPacket) -> TetsuResult<Event> {
                 Ok(Event::Disconnect(Disconnect {
-                    reason: origin.reason
+                    reason: item.reason
                 }))
             }
         }

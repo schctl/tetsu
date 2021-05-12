@@ -1,6 +1,5 @@
 //! Packet specific tools.
 
-use crate::errors::*;
 use crate::event::*;
 
 mod types;
@@ -10,11 +9,6 @@ pub(crate) trait Packet: Readable + Writable {
     const ID: i32;
     const DIRECTION: EventDirection;
     const STATE: EventState;
-
-    type EventType;
-
-    fn into_event(self) -> TetsuResult<Event>;
-    fn from_event(event: Self::EventType) -> TetsuResult<Self>;
 }
 
 /// Autoimplement packets for a protocol version.
@@ -30,10 +24,10 @@ macro_rules! protocol_impl {
         $(
             ($id:expr) $direction:ident $state:ident $name:ident: $event_type:ident {
                 from_event {
-                    $from_event:expr
+                    $from_event:item
                 }
                 to_event {
-                    $to_event:expr
+                    $to_event:item
                 }
 
                 fields {
@@ -50,6 +44,9 @@ macro_rules! protocol_impl {
         use crate::{packet::*, errors::*};
         #[allow(unused_imports)]
         use log::{debug, error, info, warn};
+
+        use std::convert::TryFrom;
+        use std::convert::TryInto;
 
         /// Implementation for converting protocol-specific calls to `Event`s
         /// for protocol version $version.
@@ -82,12 +79,12 @@ macro_rules! protocol_impl {
             match (&id, direction, state) {
                 $(
                     (&<$inherit>::ID, &<$inherit>::DIRECTION, &<$inherit>::STATE) => {
-                        Ok(<$inherit>::read_from(&mut bytes)?.into_event()?)
+                        Ok(<$inherit>::read_from(&mut bytes)?.try_into()?)
                     },
                 )*
                 $(
                     (&$id, &EventDirection::$direction, &EventState::$state) => {
-                        Ok($name::read_from(&mut bytes)?.into_event()?)
+                        Ok($name::read_from(&mut bytes)?.try_into()?)
                     },
                 )*
                 _ => {
@@ -112,12 +109,12 @@ macro_rules! protocol_impl {
             match event {
                 $(
                     Event::$inherit_event(origin) => {
-                        <$inherit>::from_event(origin)?.write_to(&mut _buf)?
+                        <$inherit>::try_from(origin)?.write_to(&mut _buf)?
                     },
                 )*
                 $(
                     Event::$event_type(origin) => {
-                        $name::from_event(origin)?.write_to(&mut _buf)?
+                        $name::try_from(origin)?.write_to(&mut _buf)?
                     },
                 )*
                 _ => {
@@ -155,18 +152,6 @@ macro_rules! protocol_impl {
                 const ID: i32 = $id;
                 const DIRECTION: EventDirection = EventDirection::$direction;
                 const STATE: EventState = EventState::$state;
-
-                type EventType = $event_type;
-
-                #[inline]
-                fn into_event(self) -> TetsuResult<Event> {
-                    $to_event(self)
-                }
-
-                #[inline]
-                fn from_event(event: $event_type) -> TetsuResult<Self> {
-                    $from_event(event)
-                }
             }
 
             impl Readable for $name {
@@ -190,6 +175,20 @@ macro_rules! protocol_impl {
                     )*
                     Ok(())
                 }
+            }
+
+            impl TryFrom<$event_type> for $name {
+                type Error = Error;
+
+                #[inline]
+                $from_event
+            }
+
+            impl TryFrom<$name> for Event {
+                type Error = Error;
+
+                #[inline]
+                $to_event
             }
         )*
     };
