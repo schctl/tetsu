@@ -314,7 +314,7 @@ impl Default for Chat {
 
 // ---- VarInt -------------
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct VarInt(pub i32);
 
 impl Readable for VarInt {
@@ -509,5 +509,38 @@ impl Writable for NbtBlob {
     #[inline]
     fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         Ok(self.to_writer(buf)?)
+    }
+}
+
+// ---- Option --------------
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct GenericOption<C: Readable + Writable>(pub Option<C>);
+
+impl<C: Readable + Writable> Readable for GenericOption<C> {
+    #[inline]
+    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
+        let exists = bool::read_from(buf)?;
+        let internal;
+        if exists {
+            internal = Some(C::read_from(buf)?)
+        } else {
+            internal = None
+        }
+
+        Ok(Self(internal))
+    }
+}
+
+impl<C: Readable + Writable> Writable for GenericOption<C> {
+    #[inline]
+    fn write_to<W: io::Write>(&self, buf: &mut W) -> TetsuResult<()> {
+        match &self.0 {
+            Some(s) => {
+                true.write_to(buf)?;
+                s.write_to(buf)
+            }
+            _ => false.write_to(buf),
+        }
     }
 }

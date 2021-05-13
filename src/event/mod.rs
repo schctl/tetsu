@@ -91,6 +91,7 @@ pub enum Event {
     SpawnPosition(SpawnPosition),
     HeldItemChange(HeldItemChange),
     Statistics(Statistics),
+    PlayerInfoUpdate(PlayerInfoUpdate),
     PlayerAbility(PlayerAbility),
     PluginMessage(PluginMessage),
     ServerDifficultyUpdate(ServerDifficultyUpdate),

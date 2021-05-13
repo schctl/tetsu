@@ -9,12 +9,16 @@ use uuid::Uuid;
 
 mod internal {
 
+    use crate::event::types::PlayerInfoUpdate;
+
     use super::*;
 
     use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
     use std::io;
 
     // Protocol specific types ---
+
+    // Position ----
 
     #[derive(Debug, PartialEq)]
     pub struct PositionXYZ {
@@ -70,6 +74,8 @@ mod internal {
         }
     }
 
+    // Statistics ----
+
     #[derive(Debug, PartialEq)]
     pub struct StatisticString {
         name: String,
@@ -110,6 +116,413 @@ mod internal {
         fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
             self.name.write_to(buf)?;
             self.value.write_to(buf)
+        }
+    }
+
+    // Player info ---
+
+    #[derive(Debug, PartialEq, Clone)]
+    pub struct InternalPlayerProperty {
+        pub name: String,
+        pub value: String,
+        pub signature: GenericOption<String>,
+    }
+
+    impl From<PlayerProperty> for InternalPlayerProperty {
+        fn from(item: PlayerProperty) -> Self {
+            Self {
+                name: item.name,
+                value: item.value,
+                signature: GenericOption(item.signature),
+            }
+        }
+    }
+
+    impl From<InternalPlayerProperty> for PlayerProperty {
+        fn from(item: InternalPlayerProperty) -> Self {
+            Self {
+                name: item.name,
+                value: item.value,
+                signature: item.signature.0,
+            }
+        }
+    }
+
+    impl Readable for InternalPlayerProperty {
+        #[inline]
+        fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
+            let name = String::read_from(buf)?;
+            let value = String::read_from(buf)?;
+            let signature = GenericOption::read_from(buf)?;
+
+            Ok(Self {
+                name,
+                value,
+                signature,
+            })
+        }
+    }
+
+    impl Writable for InternalPlayerProperty {
+        #[inline]
+        fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
+            self.name.write_to(buf)?;
+            self.value.write_to(buf)?;
+            self.signature.write_to(buf)
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    pub struct InternalPlayerInfoAdd {
+        pub name: String,
+        pub properties: GenericArray<VarInt, InternalPlayerProperty>,
+        pub gamemode: VarInt,
+        pub ping: VarInt,
+        pub display: GenericOption<Chat>,
+    }
+
+    impl From<PlayerInfoAdd> for InternalPlayerInfoAdd {
+        fn from(item: PlayerInfoAdd) -> Self {
+            let properties: Vec<InternalPlayerProperty> = item
+                .properties
+                .into_iter()
+                .map(|p| -> InternalPlayerProperty { p.into() })
+                .collect();
+            Self {
+                name: item.name,
+                properties: GenericArray::from(properties),
+                gamemode: VarInt(gamemode_to_byte(&item.gamemode) as i32),
+                ping: VarInt(item.ping),
+                display: GenericOption(item.display),
+            }
+        }
+    }
+
+    impl From<InternalPlayerInfoAdd> for PlayerInfoAdd {
+        fn from(item: InternalPlayerInfoAdd) -> Self {
+            let properties = item
+                .properties
+                .1
+                .into_iter()
+                .map(|p| -> PlayerProperty { p.into() })
+                .collect();
+            Self {
+                name: item.name,
+                properties,
+                gamemode: byte_to_gamemode(item.gamemode.0 as u8),
+                ping: item.ping.0,
+                display: item.display.0,
+            }
+        }
+    }
+
+    impl Readable for InternalPlayerInfoAdd {
+        #[inline]
+        fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
+            let name = String::read_from(buf)?;
+            let properties = GenericArray::read_from(buf)?;
+            let gamemode = VarInt::read_from(buf)?;
+            let ping = VarInt::read_from(buf)?;
+            let display = GenericOption::read_from(buf)?;
+
+            Ok(Self {
+                name,
+                properties,
+                gamemode,
+                ping,
+                display,
+            })
+        }
+    }
+
+    impl Writable for InternalPlayerInfoAdd {
+        #[inline]
+        fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
+            self.name.write_to(buf)?;
+            self.properties.write_to(buf)?;
+            self.gamemode.write_to(buf)?;
+            self.ping.write_to(buf)?;
+            self.display.write_to(buf)
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    pub struct InternalPlayerGamemodeUpdate {
+        gamemode: VarInt,
+    }
+
+    impl From<PlayerGamemodeUpdate> for InternalPlayerGamemodeUpdate {
+        fn from(item: PlayerGamemodeUpdate) -> Self {
+            Self {
+                gamemode: VarInt(gamemode_to_byte(&item.gamemode) as i32),
+            }
+        }
+    }
+
+    impl From<InternalPlayerGamemodeUpdate> for PlayerGamemodeUpdate {
+        fn from(item: InternalPlayerGamemodeUpdate) -> Self {
+            Self {
+                gamemode: byte_to_gamemode(item.gamemode.0 as u8),
+            }
+        }
+    }
+
+    impl Readable for InternalPlayerGamemodeUpdate {
+        #[inline]
+        fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
+            let gamemode = VarInt::read_from(buf)?;
+
+            Ok(Self { gamemode })
+        }
+    }
+
+    impl Writable for InternalPlayerGamemodeUpdate {
+        #[inline]
+        fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
+            self.gamemode.write_to(buf)
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    pub struct InternalPlayerLatencyUpdate {
+        ping: VarInt,
+    }
+
+    impl From<PlayerLatencyUpdate> for InternalPlayerLatencyUpdate {
+        fn from(item: PlayerLatencyUpdate) -> Self {
+            Self {
+                ping: VarInt(item.ping),
+            }
+        }
+    }
+
+    impl From<InternalPlayerLatencyUpdate> for PlayerLatencyUpdate {
+        fn from(item: InternalPlayerLatencyUpdate) -> Self {
+            Self { ping: item.ping.0 }
+        }
+    }
+
+    impl Readable for InternalPlayerLatencyUpdate {
+        #[inline]
+        fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
+            let ping = VarInt::read_from(buf)?;
+
+            Ok(Self { ping })
+        }
+    }
+
+    impl Writable for InternalPlayerLatencyUpdate {
+        #[inline]
+        fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
+            self.ping.write_to(buf)
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    pub struct InternalPlayerDisplayNameUpdate {
+        display: GenericOption<Chat>,
+    }
+
+    impl From<PlayerDisplayNameUpdate> for InternalPlayerDisplayNameUpdate {
+        fn from(item: PlayerDisplayNameUpdate) -> Self {
+            Self {
+                display: GenericOption(item.display),
+            }
+        }
+    }
+
+    impl From<InternalPlayerDisplayNameUpdate> for PlayerDisplayNameUpdate {
+        fn from(item: InternalPlayerDisplayNameUpdate) -> Self {
+            Self {
+                display: item.display.0,
+            }
+        }
+    }
+
+    impl Readable for InternalPlayerDisplayNameUpdate {
+        #[inline]
+        fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
+            let display = GenericOption::read_from(buf)?;
+
+            Ok(Self { display })
+        }
+    }
+
+    impl Writable for InternalPlayerDisplayNameUpdate {
+        #[inline]
+        fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
+            self.display.write_to(buf)
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    pub struct InternalRemovePlayer {}
+
+    impl From<RemovePlayer> for InternalRemovePlayer {
+        fn from(_: RemovePlayer) -> Self {
+            Self {}
+        }
+    }
+
+    impl From<InternalRemovePlayer> for RemovePlayer {
+        fn from(_: InternalRemovePlayer) -> Self {
+            Self {}
+        }
+    }
+
+    impl Readable for InternalRemovePlayer {
+        #[inline]
+        fn read_from<T: io::Read>(_: &mut T) -> TetsuResult<Self> {
+            Ok(Self {})
+        }
+    }
+
+    impl Writable for InternalRemovePlayer {
+        #[inline]
+        fn write_to<T: io::Write>(&self, _: &mut T) -> TetsuResult<()> {
+            Ok(())
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    pub enum InternalPlayerInfoAction {
+        Add(InternalPlayerInfoAdd),
+        GamemodeUpdate(InternalPlayerGamemodeUpdate),
+        LatencyUpdate(InternalPlayerLatencyUpdate),
+        DisplayNameUpdate(InternalPlayerDisplayNameUpdate),
+        Remove(InternalRemovePlayer),
+    }
+
+    impl From<PlayerInfoAction> for InternalPlayerInfoAction {
+        fn from(item: PlayerInfoAction) -> Self {
+            match item {
+                PlayerInfoAction::Add(e) => Self::Add(e.into()),
+                PlayerInfoAction::GamemodeUpdate(e) => Self::GamemodeUpdate(e.into()),
+                PlayerInfoAction::LatencyUpdate(e) => Self::LatencyUpdate(e.into()),
+                PlayerInfoAction::DisplayNameUpdate(e) => Self::DisplayNameUpdate(e.into()),
+                PlayerInfoAction::Remove(e) => Self::Remove(e.into()),
+            }
+        }
+    }
+
+    impl From<InternalPlayerInfoAction> for PlayerInfoAction {
+        fn from(item: InternalPlayerInfoAction) -> Self {
+            match item {
+                InternalPlayerInfoAction::Add(e) => Self::Add(e.into()),
+                InternalPlayerInfoAction::GamemodeUpdate(e) => Self::GamemodeUpdate(e.into()),
+                InternalPlayerInfoAction::LatencyUpdate(e) => Self::LatencyUpdate(e.into()),
+                InternalPlayerInfoAction::DisplayNameUpdate(e) => Self::DisplayNameUpdate(e.into()),
+                InternalPlayerInfoAction::Remove(e) => Self::Remove(e.into()),
+            }
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    pub struct InternalPlayerInfo {
+        pub uuid: Uuid,
+        pub action: InternalPlayerInfoAction,
+    }
+
+    #[derive(Debug, PartialEq)]
+    pub struct InternalPlayerListUpdate {
+        players: Vec<InternalPlayerInfo>,
+    }
+
+    impl From<PlayerInfoUpdate> for InternalPlayerListUpdate {
+        fn from(item: PlayerInfoUpdate) -> Self {
+            Self {
+                players: item
+                    .players
+                    .into_iter()
+                    .map(|p| -> InternalPlayerInfo {
+                        InternalPlayerInfo {
+                            uuid: p.uuid,
+                            action: p.action.into(),
+                        }
+                    })
+                    .collect(),
+            }
+        }
+    }
+
+    impl From<InternalPlayerListUpdate> for PlayerInfoUpdate {
+        fn from(item: InternalPlayerListUpdate) -> Self {
+            Self {
+                players: item
+                    .players
+                    .into_iter()
+                    .map(|p| -> PlayerListInfo {
+                        PlayerListInfo {
+                            uuid: p.uuid,
+                            action: p.action.into(),
+                        }
+                    })
+                    .collect(),
+            }
+        }
+    }
+
+    impl Readable for InternalPlayerListUpdate {
+        #[inline]
+        fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
+            let action = VarInt::read_from(buf)?.0;
+            let player_len = VarInt::read_from(buf)?.0;
+
+            let mut players = vec![];
+
+            for _ in 0..player_len {
+                let uuid = Uuid::read_from(buf)?;
+                let p_action = match action {
+                    0 => InternalPlayerInfoAction::Add(InternalPlayerInfoAdd::read_from(buf)?),
+                    1 => InternalPlayerInfoAction::GamemodeUpdate(
+                        InternalPlayerGamemodeUpdate::read_from(buf)?,
+                    ),
+                    2 => InternalPlayerInfoAction::LatencyUpdate(
+                        InternalPlayerLatencyUpdate::read_from(buf)?,
+                    ),
+                    3 => InternalPlayerInfoAction::DisplayNameUpdate(
+                        InternalPlayerDisplayNameUpdate::read_from(buf)?,
+                    ),
+                    4 => InternalPlayerInfoAction::Remove(InternalRemovePlayer::read_from(buf)?),
+                    _ => panic!("Unknown")
+                };
+                players.push(InternalPlayerInfo {
+                    uuid,
+                    action: p_action,
+                });
+            }
+
+            Ok(Self { players })
+        }
+    }
+
+    impl Writable for InternalPlayerListUpdate {
+        #[inline]
+        fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
+            let player_len = self.players.len();
+
+            match self.players[0].action {
+                InternalPlayerInfoAction::Add(_) => VarInt(0).write_to(buf)?,
+                InternalPlayerInfoAction::GamemodeUpdate(_) => VarInt(1).write_to(buf)?,
+                InternalPlayerInfoAction::LatencyUpdate(_) => VarInt(2).write_to(buf)?,
+                InternalPlayerInfoAction::DisplayNameUpdate(_) => VarInt(3).write_to(buf)?,
+                InternalPlayerInfoAction::Remove(_) => VarInt(4).write_to(buf)?,
+            };
+
+            VarInt(player_len as i32).write_to(buf)?;
+
+            for i in self.players.iter() {
+                i.uuid.write_to(buf)?;
+                match &i.action {
+                    InternalPlayerInfoAction::Add(e) => e.write_to(buf)?,
+                    InternalPlayerInfoAction::GamemodeUpdate(e) => e.write_to(buf)?,
+                    InternalPlayerInfoAction::LatencyUpdate(e) => e.write_to(buf)?,
+                    InternalPlayerInfoAction::DisplayNameUpdate(e) => e.write_to(buf)?,
+                    InternalPlayerInfoAction::Remove(e) => e.write_to(buf)?,
+                };
+            }
+
+            Ok(())
         }
     }
 
@@ -570,6 +983,24 @@ protocol_impl! {
         }
         fields {
             values: GenericArray<VarInt, StatisticString>,
+        }
+    }
+
+    (0x38) ClientBound Play PlayListItemPacket: PlayerInfoUpdate {
+        from_event {
+            fn try_from(item: PlayerInfoUpdate) -> TetsuResult<PlayListItemPacket> {
+                Ok(Self {
+                    players: InternalPlayerListUpdate::from(item)
+                })
+            }
+        }
+        to_event {
+            fn try_from(item: PlayListItemPacket) -> TetsuResult<Event> {
+                Ok(Event::PlayerInfoUpdate(PlayerInfoUpdate::from(item.players)))
+            }
+        }
+        fields {
+            players: InternalPlayerListUpdate,
         }
     }
 

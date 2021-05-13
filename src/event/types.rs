@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_repr::*;
 
+use crate::packet::*;
+
 /// All supported protocol versions.
 #[non_exhaustive]
 #[derive(Serialize_repr, Deserialize_repr, Debug, PartialEq, Eq, Clone, Copy)]
@@ -102,4 +104,60 @@ pub struct Position {
     pub x: i64,
     pub y: i64,
     pub z: i64,
+}
+
+// Player Infos -------
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct PlayerProperty {
+    pub name: String,
+    pub value: String,
+    pub signature: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct PlayerInfoAdd {
+    pub name: String,
+    pub properties: Vec<PlayerProperty>,
+    pub gamemode: Gamemode,
+    pub ping: i32,
+    pub display: Option<Chat>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct PlayerGamemodeUpdate {
+    pub gamemode: Gamemode,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct PlayerLatencyUpdate {
+    pub ping: i32,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct PlayerDisplayNameUpdate {
+    pub display: Option<Chat>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct RemovePlayer {}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum PlayerInfoAction {
+    Add(PlayerInfoAdd),
+    GamemodeUpdate(PlayerGamemodeUpdate),
+    LatencyUpdate(PlayerLatencyUpdate),
+    DisplayNameUpdate(PlayerDisplayNameUpdate),
+    Remove(RemovePlayer),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct PlayerListInfo {
+    pub uuid: Uuid,
+    pub action: PlayerInfoAction,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct PlayerInfoUpdate {
+    pub players: Vec<PlayerListInfo>,
 }
