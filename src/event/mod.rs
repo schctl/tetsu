@@ -38,7 +38,7 @@ use crate::packet::*;
 use crate::versions;
 
 pub mod dispatcher;
-mod types;
+pub mod types;
 
 pub use types::*;
 
@@ -119,7 +119,7 @@ pub struct Pong {
 #[derive(Debug, PartialEq, Clone)]
 pub struct StatusRequest {}
 
-/// Server information response to `StatusRequest`.
+/// Server information response to [`StatusRequest`].
 #[derive(Debug, PartialEq, Clone)]
 pub struct StatusResponse {
     /// Server information.

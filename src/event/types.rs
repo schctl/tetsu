@@ -59,6 +59,7 @@ pub enum Difficulty {
     Hard,
 }
 
+/// General server description.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(untagged)]
 pub enum ServerDescription {
@@ -66,7 +67,9 @@ pub enum ServerDescription {
     Long(ServerDescriptionLong),
 }
 
-/// Long server description. All fields haven't been covered yet.
+/// Long server description.
+///
+/// **Warning:** All fields haven't been covered yet.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ServerDescriptionLong {
     pub text: String,

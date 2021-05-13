@@ -5,7 +5,7 @@ use crate::event::*;
 mod types;
 pub use types::*;
 
-pub(crate) trait Packet: Readable + Writable {
+pub trait Packet: Readable + Writable {
     const ID: i32;
     const DIRECTION: EventDirection;
     const STATE: EventState;
