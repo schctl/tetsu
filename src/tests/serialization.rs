@@ -1,19 +1,15 @@
-#![allow(unused_imports)]
-
-use log::info;
-
-use serde_json::json;
-
 use std::collections::HashMap;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 
+use serde_json::json;
+
+use crate::event::Chat;
 use crate::event::{
     self, dispatcher::EventDispatcher, Disconnect, Event, EventDirection, EventState, Handshake,
     KeepAlive, PlayerAbility, Position, SpawnPosition, Statistic, Statistics,
 };
-use crate::packet::Chat;
 
 const SER_RUNS: usize = 4_096;
 

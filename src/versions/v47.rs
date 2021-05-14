@@ -1,17 +1,23 @@
 //! Event implementation for v47 of the protocol.
 //! V47 covers server versions 1.8 - 1.8.9
 
+use super::common::*;
+
 use crate::errors::*;
 use crate::event::*;
-use crate::packet::*;
+use crate::serialization::*;
 
 use uuid::Uuid;
 
-mod internal {
+pub mod internal {
 
-    use crate::event::types::PlayerInfoUpdate;
+    use crate::errors::*;
+    use crate::event;
+    use crate::serialization::*;
 
-    use super::*;
+    use super::super::common::*;
+
+    use tetsu_derive::{ReadableStruct, WritableStruct};
 
     use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
     use std::io;
@@ -27,9 +33,9 @@ mod internal {
         pub z: i64,
     }
 
-    impl From<Position> for PositionXYZ {
+    impl From<event::Position> for PositionXYZ {
         #[inline]
-        fn from(item: Position) -> Self {
+        fn from(item: event::Position) -> Self {
             Self {
                 x: item.x,
                 y: item.y,
@@ -38,7 +44,7 @@ mod internal {
         }
     }
 
-    impl From<PositionXYZ> for Position {
+    impl From<PositionXYZ> for event::Position {
         #[inline]
         fn from(item: PositionXYZ) -> Self {
             Self {
@@ -76,15 +82,15 @@ mod internal {
 
     // Statistics ----
 
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, ReadableStruct, WritableStruct)]
     pub struct StatisticString {
         name: String,
         value: VarInt,
     }
 
-    impl From<Statistic> for StatisticString {
+    impl From<event::Statistic> for StatisticString {
         #[inline]
-        fn from(item: Statistic) -> Self {
+        fn from(item: event::Statistic) -> Self {
             Self {
                 name: item.name,
                 value: VarInt(item.value),
@@ -92,7 +98,7 @@ mod internal {
         }
     }
 
-    impl From<StatisticString> for Statistic {
+    impl From<StatisticString> for event::Statistic {
         #[inline]
         fn from(item: StatisticString) -> Self {
             Self {
@@ -102,34 +108,17 @@ mod internal {
         }
     }
 
-    impl Readable for StatisticString {
-        #[inline]
-        fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
-            let name = String::read_from(buf)?;
-            let value = VarInt::read_from(buf)?;
-            Ok(Self { name, value })
-        }
-    }
-
-    impl Writable for StatisticString {
-        #[inline]
-        fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
-            self.name.write_to(buf)?;
-            self.value.write_to(buf)
-        }
-    }
-
     // Player info ---
 
-    #[derive(Debug, PartialEq, Clone)]
+    #[derive(Debug, PartialEq, Clone, ReadableStruct, WritableStruct)]
     pub struct InternalPlayerProperty {
         pub name: String,
         pub value: String,
         pub signature: GenericOption<String>,
     }
 
-    impl From<PlayerProperty> for InternalPlayerProperty {
-        fn from(item: PlayerProperty) -> Self {
+    impl From<event::PlayerProperty> for InternalPlayerProperty {
+        fn from(item: event::PlayerProperty) -> Self {
             Self {
                 name: item.name,
                 value: item.value,
@@ -138,7 +127,7 @@ mod internal {
         }
     }
 
-    impl From<InternalPlayerProperty> for PlayerProperty {
+    impl From<InternalPlayerProperty> for event::PlayerProperty {
         fn from(item: InternalPlayerProperty) -> Self {
             Self {
                 name: item.name,
@@ -148,41 +137,17 @@ mod internal {
         }
     }
 
-    impl Readable for InternalPlayerProperty {
-        #[inline]
-        fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
-            let name = String::read_from(buf)?;
-            let value = String::read_from(buf)?;
-            let signature = GenericOption::read_from(buf)?;
-
-            Ok(Self {
-                name,
-                value,
-                signature,
-            })
-        }
-    }
-
-    impl Writable for InternalPlayerProperty {
-        #[inline]
-        fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
-            self.name.write_to(buf)?;
-            self.value.write_to(buf)?;
-            self.signature.write_to(buf)
-        }
-    }
-
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, ReadableStruct, WritableStruct)]
     pub struct InternalPlayerInfoAdd {
         pub name: String,
         pub properties: GenericArray<VarInt, InternalPlayerProperty>,
         pub gamemode: VarInt,
         pub ping: VarInt,
-        pub display: GenericOption<Chat>,
+        pub display: GenericOption<event::Chat>,
     }
 
-    impl From<PlayerInfoAdd> for InternalPlayerInfoAdd {
-        fn from(item: PlayerInfoAdd) -> Self {
+    impl From<event::PlayerInfoAdd> for InternalPlayerInfoAdd {
+        fn from(item: event::PlayerInfoAdd) -> Self {
             let properties: Vec<InternalPlayerProperty> = item
                 .properties
                 .into_iter()
@@ -198,13 +163,13 @@ mod internal {
         }
     }
 
-    impl From<InternalPlayerInfoAdd> for PlayerInfoAdd {
+    impl From<InternalPlayerInfoAdd> for event::PlayerInfoAdd {
         fn from(item: InternalPlayerInfoAdd) -> Self {
             let properties = item
                 .properties
                 .1
                 .into_iter()
-                .map(|p| -> PlayerProperty { p.into() })
+                .map(|p| -> event::PlayerProperty { p.into() })
                 .collect();
             Self {
                 name: item.name,
@@ -216,50 +181,20 @@ mod internal {
         }
     }
 
-    impl Readable for InternalPlayerInfoAdd {
-        #[inline]
-        fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
-            let name = String::read_from(buf)?;
-            let properties = GenericArray::read_from(buf)?;
-            let gamemode = VarInt::read_from(buf)?;
-            let ping = VarInt::read_from(buf)?;
-            let display = GenericOption::read_from(buf)?;
-
-            Ok(Self {
-                name,
-                properties,
-                gamemode,
-                ping,
-                display,
-            })
-        }
-    }
-
-    impl Writable for InternalPlayerInfoAdd {
-        #[inline]
-        fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
-            self.name.write_to(buf)?;
-            self.properties.write_to(buf)?;
-            self.gamemode.write_to(buf)?;
-            self.ping.write_to(buf)?;
-            self.display.write_to(buf)
-        }
-    }
-
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, ReadableStruct, WritableStruct)]
     pub struct InternalPlayerGamemodeUpdate {
         gamemode: VarInt,
     }
 
-    impl From<PlayerGamemodeUpdate> for InternalPlayerGamemodeUpdate {
-        fn from(item: PlayerGamemodeUpdate) -> Self {
+    impl From<event::PlayerGamemodeUpdate> for InternalPlayerGamemodeUpdate {
+        fn from(item: event::PlayerGamemodeUpdate) -> Self {
             Self {
                 gamemode: VarInt(gamemode_to_byte(&item.gamemode) as i32),
             }
         }
     }
 
-    impl From<InternalPlayerGamemodeUpdate> for PlayerGamemodeUpdate {
+    impl From<InternalPlayerGamemodeUpdate> for event::PlayerGamemodeUpdate {
         fn from(item: InternalPlayerGamemodeUpdate) -> Self {
             Self {
                 gamemode: byte_to_gamemode(item.gamemode.0 as u8),
@@ -267,71 +202,39 @@ mod internal {
         }
     }
 
-    impl Readable for InternalPlayerGamemodeUpdate {
-        #[inline]
-        fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
-            let gamemode = VarInt::read_from(buf)?;
-
-            Ok(Self { gamemode })
-        }
-    }
-
-    impl Writable for InternalPlayerGamemodeUpdate {
-        #[inline]
-        fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
-            self.gamemode.write_to(buf)
-        }
-    }
-
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, ReadableStruct, WritableStruct)]
     pub struct InternalPlayerLatencyUpdate {
         ping: VarInt,
     }
 
-    impl From<PlayerLatencyUpdate> for InternalPlayerLatencyUpdate {
-        fn from(item: PlayerLatencyUpdate) -> Self {
+    impl From<event::PlayerLatencyUpdate> for InternalPlayerLatencyUpdate {
+        fn from(item: event::PlayerLatencyUpdate) -> Self {
             Self {
                 ping: VarInt(item.ping),
             }
         }
     }
 
-    impl From<InternalPlayerLatencyUpdate> for PlayerLatencyUpdate {
+    impl From<InternalPlayerLatencyUpdate> for event::PlayerLatencyUpdate {
         fn from(item: InternalPlayerLatencyUpdate) -> Self {
             Self { ping: item.ping.0 }
         }
     }
 
-    impl Readable for InternalPlayerLatencyUpdate {
-        #[inline]
-        fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
-            let ping = VarInt::read_from(buf)?;
-
-            Ok(Self { ping })
-        }
-    }
-
-    impl Writable for InternalPlayerLatencyUpdate {
-        #[inline]
-        fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
-            self.ping.write_to(buf)
-        }
-    }
-
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, ReadableStruct, WritableStruct)]
     pub struct InternalPlayerDisplayNameUpdate {
-        display: GenericOption<Chat>,
+        display: GenericOption<event::Chat>,
     }
 
-    impl From<PlayerDisplayNameUpdate> for InternalPlayerDisplayNameUpdate {
-        fn from(item: PlayerDisplayNameUpdate) -> Self {
+    impl From<event::PlayerDisplayNameUpdate> for InternalPlayerDisplayNameUpdate {
+        fn from(item: event::PlayerDisplayNameUpdate) -> Self {
             Self {
                 display: GenericOption(item.display),
             }
         }
     }
 
-    impl From<InternalPlayerDisplayNameUpdate> for PlayerDisplayNameUpdate {
+    impl From<InternalPlayerDisplayNameUpdate> for event::PlayerDisplayNameUpdate {
         fn from(item: InternalPlayerDisplayNameUpdate) -> Self {
             Self {
                 display: item.display.0,
@@ -339,48 +242,18 @@ mod internal {
         }
     }
 
-    impl Readable for InternalPlayerDisplayNameUpdate {
-        #[inline]
-        fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
-            let display = GenericOption::read_from(buf)?;
-
-            Ok(Self { display })
-        }
-    }
-
-    impl Writable for InternalPlayerDisplayNameUpdate {
-        #[inline]
-        fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
-            self.display.write_to(buf)
-        }
-    }
-
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, ReadableStruct, WritableStruct)]
     pub struct InternalRemovePlayer {}
 
-    impl From<RemovePlayer> for InternalRemovePlayer {
-        fn from(_: RemovePlayer) -> Self {
+    impl From<event::RemovePlayer> for InternalRemovePlayer {
+        fn from(_: event::RemovePlayer) -> Self {
             Self {}
         }
     }
 
-    impl From<InternalRemovePlayer> for RemovePlayer {
+    impl From<InternalRemovePlayer> for event::RemovePlayer {
         fn from(_: InternalRemovePlayer) -> Self {
             Self {}
-        }
-    }
-
-    impl Readable for InternalRemovePlayer {
-        #[inline]
-        fn read_from<T: io::Read>(_: &mut T) -> TetsuResult<Self> {
-            Ok(Self {})
-        }
-    }
-
-    impl Writable for InternalRemovePlayer {
-        #[inline]
-        fn write_to<T: io::Write>(&self, _: &mut T) -> TetsuResult<()> {
-            Ok(())
         }
     }
 
@@ -393,19 +266,19 @@ mod internal {
         Remove(InternalRemovePlayer),
     }
 
-    impl From<PlayerInfoAction> for InternalPlayerInfoAction {
-        fn from(item: PlayerInfoAction) -> Self {
+    impl From<event::PlayerInfoAction> for InternalPlayerInfoAction {
+        fn from(item: event::PlayerInfoAction) -> Self {
             match item {
-                PlayerInfoAction::Add(e) => Self::Add(e.into()),
-                PlayerInfoAction::GamemodeUpdate(e) => Self::GamemodeUpdate(e.into()),
-                PlayerInfoAction::LatencyUpdate(e) => Self::LatencyUpdate(e.into()),
-                PlayerInfoAction::DisplayNameUpdate(e) => Self::DisplayNameUpdate(e.into()),
-                PlayerInfoAction::Remove(e) => Self::Remove(e.into()),
+                event::PlayerInfoAction::Add(e) => Self::Add(e.into()),
+                event::PlayerInfoAction::GamemodeUpdate(e) => Self::GamemodeUpdate(e.into()),
+                event::PlayerInfoAction::LatencyUpdate(e) => Self::LatencyUpdate(e.into()),
+                event::PlayerInfoAction::DisplayNameUpdate(e) => Self::DisplayNameUpdate(e.into()),
+                event::PlayerInfoAction::Remove(e) => Self::Remove(e.into()),
             }
         }
     }
 
-    impl From<InternalPlayerInfoAction> for PlayerInfoAction {
+    impl From<InternalPlayerInfoAction> for event::PlayerInfoAction {
         fn from(item: InternalPlayerInfoAction) -> Self {
             match item {
                 InternalPlayerInfoAction::Add(e) => Self::Add(e.into()),
@@ -428,8 +301,8 @@ mod internal {
         players: Vec<InternalPlayerInfo>,
     }
 
-    impl From<PlayerInfoUpdate> for InternalPlayerListUpdate {
-        fn from(item: PlayerInfoUpdate) -> Self {
+    impl From<event::PlayerInfoUpdate> for InternalPlayerListUpdate {
+        fn from(item: event::PlayerInfoUpdate) -> Self {
             Self {
                 players: item
                     .players
@@ -445,14 +318,14 @@ mod internal {
         }
     }
 
-    impl From<InternalPlayerListUpdate> for PlayerInfoUpdate {
+    impl From<InternalPlayerListUpdate> for event::PlayerInfoUpdate {
         fn from(item: InternalPlayerListUpdate) -> Self {
             Self {
                 players: item
                     .players
                     .into_iter()
-                    .map(|p| -> PlayerListInfo {
-                        PlayerListInfo {
+                    .map(|p| -> event::PlayerListInfo {
+                        event::PlayerListInfo {
                             uuid: p.uuid,
                             action: p.action.into(),
                         }
@@ -484,7 +357,7 @@ mod internal {
                         InternalPlayerDisplayNameUpdate::read_from(buf)?,
                     ),
                     4 => InternalPlayerInfoAction::Remove(InternalRemovePlayer::read_from(buf)?),
-                    _ => panic!("Unknown")
+                    _ => panic!("Unknown"),
                 };
                 players.push(InternalPlayerInfo {
                     uuid,
@@ -529,68 +402,66 @@ mod internal {
     // Conversions ---
 
     #[inline]
-    pub fn byte_to_gamemode(byte: UnsignedByte) -> Gamemode {
+    pub fn byte_to_gamemode(byte: UnsignedByte) -> event::Gamemode {
         match byte {
-            0 => Gamemode::Survival,
-            1 => Gamemode::Creative,
-            2 => Gamemode::Adventure,
-            3 => Gamemode::Spectator,
+            0 => event::Gamemode::Survival,
+            1 => event::Gamemode::Creative,
+            2 => event::Gamemode::Adventure,
+            3 => event::Gamemode::Spectator,
             _ => panic!("Unknown packet"),
         }
     }
 
     #[inline]
-    pub fn gamemode_to_byte(gamemode: &Gamemode) -> UnsignedByte {
+    pub fn gamemode_to_byte(gamemode: &event::Gamemode) -> UnsignedByte {
         match gamemode {
-            Gamemode::Survival => 0,
-            Gamemode::Creative => 1,
-            Gamemode::Adventure => 2,
-            Gamemode::Spectator => 3,
+            event::Gamemode::Survival => 0,
+            event::Gamemode::Creative => 1,
+            event::Gamemode::Adventure => 2,
+            event::Gamemode::Spectator => 3,
         }
     }
 
     #[inline]
-    pub fn byte_to_dimension(byte: Byte) -> Dimension {
+    pub fn byte_to_dimension(byte: Byte) -> event::Dimension {
         match byte {
-            -1 => Dimension::Nether,
-            0 => Dimension::Overworld,
-            1 => Dimension::End,
+            -1 => event::Dimension::Nether,
+            0 => event::Dimension::Overworld,
+            1 => event::Dimension::End,
             _ => panic!("Unknown packet"),
         }
     }
 
     #[inline]
-    pub fn dimension_to_byte(dimension: &Dimension) -> Byte {
+    pub fn dimension_to_byte(dimension: &event::Dimension) -> Byte {
         match dimension {
-            Dimension::Nether => -1,
-            Dimension::Overworld => 0,
-            Dimension::End => 1,
+            event::Dimension::Nether => -1,
+            event::Dimension::Overworld => 0,
+            event::Dimension::End => 1,
         }
     }
 
     #[inline]
-    pub fn byte_to_difficulty(byte: UnsignedByte) -> Difficulty {
+    pub fn byte_to_difficulty(byte: UnsignedByte) -> event::Difficulty {
         match byte {
-            0 => Difficulty::Peaceful,
-            1 => Difficulty::Easy,
-            2 => Difficulty::Normal,
-            3 => Difficulty::Hard,
+            0 => event::Difficulty::Peaceful,
+            1 => event::Difficulty::Easy,
+            2 => event::Difficulty::Normal,
+            3 => event::Difficulty::Hard,
             _ => panic!("Unknown packet"),
         }
     }
 
     #[inline]
-    pub fn difficulty_to_byte(difficulty: &Difficulty) -> UnsignedByte {
+    pub fn difficulty_to_byte(difficulty: &event::Difficulty) -> UnsignedByte {
         match difficulty {
-            Difficulty::Peaceful => 0,
-            Difficulty::Easy => 1,
-            Difficulty::Normal => 2,
-            Difficulty::Hard => 3,
+            event::Difficulty::Peaceful => 0,
+            event::Difficulty::Easy => 1,
+            event::Difficulty::Normal => 2,
+            event::Difficulty::Hard => 3,
         }
     }
 }
-
-use internal::*;
 
 // ---------------
 
@@ -891,9 +762,9 @@ protocol_impl! {
             fn try_from(item: JoinGame) -> TetsuResult<JoinGamePacket> {
                 Ok(JoinGamePacket {
                     id: item.id,
-                    gamemode: gamemode_to_byte(&item.gamemode) | (if item.is_hardcore { 0x80 } else { 0x00 }),
-                    dimension: dimension_to_byte(&item.dimension),
-                    difficulty: difficulty_to_byte(&item.difficulty),
+                    gamemode: internal::gamemode_to_byte(&item.gamemode) | (if item.is_hardcore { 0x80 } else { 0x00 }),
+                    dimension: internal::dimension_to_byte(&item.dimension),
+                    difficulty: internal::difficulty_to_byte(&item.difficulty),
                     max_players: item.max_players as u8,
                     level_type: item.world_type,
                     reduced_debug: item.reduced_debug
@@ -904,10 +775,10 @@ protocol_impl! {
             fn try_from(item: JoinGamePacket) -> TetsuResult<Event> {
                 Ok(Event::JoinGame(JoinGame {
                     id: item.id,
-                    gamemode: byte_to_gamemode(item.gamemode),
+                    gamemode: internal::byte_to_gamemode(item.gamemode),
                     is_hardcore: item.gamemode & 0x80 == 0x80,
-                    dimension: byte_to_dimension(item.dimension),
-                    difficulty: byte_to_difficulty(item.difficulty),
+                    dimension: internal::byte_to_dimension(item.dimension),
+                    difficulty: internal::byte_to_difficulty(item.difficulty),
                     max_players: item.max_players as u32,
                     world_type: item.level_type,
                     reduced_debug: item.reduced_debug
@@ -941,7 +812,7 @@ protocol_impl! {
             }
         }
         fields {
-            location: PositionXYZ,
+            location: internal::PositionXYZ,
         }
     }
 
@@ -968,7 +839,7 @@ protocol_impl! {
     (0x37) ClientBound Play StatisticsPacket: Statistics {
         from_event {
             fn try_from(item: Statistics) -> TetsuResult<StatisticsPacket> {
-                let values: Vec<StatisticString> = item.values.into_iter().map(|s| -> StatisticString { s.into() }).collect();
+                let values: Vec<internal::StatisticString> = item.values.into_iter().map(|s| -> internal::StatisticString { s.into() }).collect();
                 Ok(StatisticsPacket {
                     values: GenericArray::from(values)
                 })
@@ -982,7 +853,7 @@ protocol_impl! {
             }
         }
         fields {
-            values: GenericArray<VarInt, StatisticString>,
+            values: GenericArray<VarInt, internal::StatisticString>,
         }
     }
 
@@ -990,7 +861,7 @@ protocol_impl! {
         from_event {
             fn try_from(item: PlayerInfoUpdate) -> TetsuResult<PlayListItemPacket> {
                 Ok(Self {
-                    players: InternalPlayerListUpdate::from(item)
+                    players: internal::InternalPlayerListUpdate::from(item)
                 })
             }
         }
@@ -1000,7 +871,7 @@ protocol_impl! {
             }
         }
         fields {
-            players: InternalPlayerListUpdate,
+            players: internal::InternalPlayerListUpdate,
         }
     }
 
@@ -1063,14 +934,14 @@ protocol_impl! {
         from_event {
             fn try_from(item: ServerDifficultyUpdate) -> TetsuResult<ServerDifficultyUpdatePacket> {
                 Ok(ServerDifficultyUpdatePacket {
-                    difficulty: difficulty_to_byte(&item.difficulty)
+                    difficulty: internal::difficulty_to_byte(&item.difficulty)
                 })
             }
         }
         to_event {
             fn try_from(item: ServerDifficultyUpdatePacket) -> TetsuResult<Event> {
                 Ok(Event::ServerDifficultyUpdate(ServerDifficultyUpdate {
-                    difficulty: byte_to_difficulty(item.difficulty),
+                    difficulty: internal::byte_to_difficulty(item.difficulty),
                     difficulty_locked: false
                 }))
             }

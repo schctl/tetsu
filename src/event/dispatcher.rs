@@ -1,3 +1,5 @@
+//! Event read/write tools.
+
 use crate::event::*;
 
 /// Wrapper around protocol specific event read/write impls.

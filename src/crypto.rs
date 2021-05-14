@@ -1,4 +1,4 @@
-//! Encryption for a client-server connection.
+//! Commonly used cryptographic functions.
 
 use crate::errors::TetsuResult;
 

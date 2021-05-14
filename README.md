@@ -18,7 +18,7 @@ The next few immediate goals for `Tetsu` are:
 
 ## Examples
 
-### Logging into a server.
+### Logging into a server
 
 ```rust
 use std::env;

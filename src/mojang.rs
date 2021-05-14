@@ -12,7 +12,7 @@ pub const JOIN_SERVER: &str = "https://sessionserver.mojang.com/session/minecraf
 // ----- Mojang sent info -----
 
 /// User preferences.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct UserProperty {
     /// Name of the property.
     pub name: String,
@@ -21,7 +21,7 @@ pub struct UserProperty {
 }
 
 /// Information of a Mojang user.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct UserInfo {
     /// User's username - usually email.
     pub username: String,
@@ -32,7 +32,7 @@ pub struct UserInfo {
 }
 
 /// A single user profile.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct UserProfile {
     /// Profile's username.
     pub name: String,
@@ -43,7 +43,7 @@ pub struct UserProfile {
 // ----- Info to be sent ------
 
 /// Information of the client.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct UserAgent {
     /// Game name - just "Minecraft" here.
     pub name: String,

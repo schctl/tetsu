@@ -3,15 +3,19 @@
 //! This implementation is not given priority to as
 //! v47 will be implemented first.
 
+use super::common::*;
+
 use crate::errors::*;
 use crate::event::*;
-use crate::packet::*;
+use crate::serialization::*;
 
-pub use crate::versions::v47::{
+use crate::versions::v47::{
     EncryptionRequestVarIntPacket, EncryptionResponseVarIntPacket, LoginStartPacket,
     SetCompressionPacket, StatusPingPacket, StatusPongPacket, StatusRequestPacket,
     StatusResponsePacket,
 };
+
+pub mod internal {}
 
 protocol_impl! {
 

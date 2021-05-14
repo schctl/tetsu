@@ -1,18 +1,6 @@
-//! Packet specific tools.
-
-use crate::event::*;
-
-mod types;
-pub use types::*;
-
-pub trait Packet: Readable + Writable {
-    const ID: i32;
-    const DIRECTION: EventDirection;
-    const STATE: EventState;
-}
+//! Useful macros.
 
 /// Autoimplement packets for a protocol version.
-#[macro_export]
 macro_rules! protocol_impl {
     (
         inherit {
@@ -36,33 +24,28 @@ macro_rules! protocol_impl {
             }
         )*
     ) => {
-        #[allow(unused_imports)]
         use std::io::prelude::*;
-        #[allow(unused_imports)]
-        use flate2::{Compression, {write::ZlibEncoder, read::ZlibDecoder}};
-        #[allow(unused_imports)]
-        use crate::{packet::*, errors::*};
-        #[allow(unused_imports)]
-        use log::{debug, error, info, warn};
-
         use std::convert::TryFrom;
         use std::convert::TryInto;
 
-        /// Implementation for converting protocol-specific calls to `Event`s
-        /// for protocol version $version.
-        pub fn read_event<T: std::io::Read>(
-            buf: &mut T,
-            state: &EventState,
-            direction: &EventDirection,
+        use flate2::{Compression, {write::ZlibEncoder, read::ZlibDecoder}};
+
+        use $crate::event;
+        use $crate::serialization::{Readable, Writable};
+
+        pub fn read_event<__T: std::io::Read>(
+            buf: &mut __T,
+            state: &event::EventState,
+            direction: &event::EventDirection,
             compression_threshold: i32
-        ) -> TetsuResult<Event> {
-            let mut bytes = vec![0; VarInt::read_from(buf)?.0 as usize];
+        ) -> $crate::TetsuResult<event::Event> {
+            let mut bytes = vec![0; $crate::versions::common::VarInt::read_from(buf)?.0 as usize];
 
             buf.read_exact(&mut bytes)?;
             let mut bytes = std::io::Cursor::new(bytes);
 
             if compression_threshold > 0 {
-                let uncompressed_size = VarInt::read_from(&mut bytes)?.0;
+                let uncompressed_size = $crate::versions::common::VarInt::read_from(&mut bytes)?.0;
 
                 if uncompressed_size > 0 {
                     let mut new_bytes = Vec::with_capacity(uncompressed_size as usize);
@@ -73,7 +56,7 @@ macro_rules! protocol_impl {
                 }
             }
 
-            let id = VarInt::read_from(&mut bytes)?.0;
+            let id = $crate::versions::common::VarInt::read_from(&mut bytes)?.0;
 
             #[allow(unreachable_patterns)]
             match (&id, direction, state) {
@@ -83,42 +66,41 @@ macro_rules! protocol_impl {
                     },
                 )*
                 $(
-                    (&$id, &EventDirection::$direction, &EventState::$state) => {
+                    (&$id, &event::EventDirection::$direction, &event::EventState::$state) => {
                         Ok($name::read_from(&mut bytes)?.try_into()?)
                     },
                 )*
                 _ => {
-                    Err(Error::from(InvalidValue {
+                    Err($crate::errors::Error::from($crate::errors::InvalidValue {
                         expected: format!("not packet: [{:x}]:{:?}:{:?}", id, direction, state)
                     }))
                 }
             }
         }
 
-        /// Implementation for converting `Event`s to protocol-specific calls.
-        pub fn write_event<T: std::io::Write>(
-            buf: &mut T,
-            event: Event,
-            _state: &EventState,
-            _direction: &EventDirection,
+        pub fn write_event<__T: std::io::Write>(
+            buf: &mut __T,
+            event: event::Event,
+            _state: &event::EventState,
+            _direction: &event::EventDirection,
             compression_threshold: i32
-        ) -> TetsuResult<()> {
+        ) -> $crate::TetsuResult<()> {
             let mut _buf = Vec::new();
 
             #[allow(unreachable_patterns)]
             match event {
                 $(
-                    Event::$inherit_event(origin) => {
+                    event::Event::$inherit_event(origin) => {
                         <$inherit>::try_from(origin)?.write_to(&mut _buf)?
                     },
                 )*
                 $(
-                    Event::$event_type(origin) => {
+                    event::Event::$event_type(origin) => {
                         $name::try_from(origin)?.write_to(&mut _buf)?
                     },
                 )*
                 _ => {
-                    return Err(Error::from(InvalidValue {
+                    return Err($crate::errors::Error::from($crate::errors::InvalidValue {
                         expected: format!("not event: {:?}", event)
                     }))
                 }
@@ -129,18 +111,17 @@ macro_rules! protocol_impl {
                 let mut compressed = Vec::new();
                 let mut writer = ZlibEncoder::new(std::io::Cursor::new(_buf), Compression::default());
 
-                VarInt(uncompressed_len as i32).write_to(&mut compressed)?;
+                $crate::versions::common::VarInt(uncompressed_len as i32).write_to(&mut compressed)?;
                 writer.read_to_end(&mut compressed)?;
-                VarInt(compressed.len() as i32).write_to(buf)?;
+                $crate::versions::common::VarInt(compressed.len() as i32).write_to(buf)?;
                 buf.write_all(&compressed)?;
             } else {
-                VarInt(_buf.len() as i32).write_to(buf)?;
+                $crate::versions::common::VarInt(_buf.len() as i32).write_to(buf)?;
                 buf.write_all(&_buf)?;
             })
         }
 
         $(
-            /// Protocol implementation for packet $name.
             #[derive(Debug, PartialEq)]
             pub struct $name {
                 $(
@@ -148,15 +129,15 @@ macro_rules! protocol_impl {
                 )*
             }
 
-            impl Packet for $name {
+            impl $crate::serialization::Packet for $name {
                 const ID: i32 = $id;
-                const DIRECTION: EventDirection = EventDirection::$direction;
-                const STATE: EventState = EventState::$state;
+                const DIRECTION: event::EventDirection = event::EventDirection::$direction;
+                const STATE: event::EventState = event::EventState::$state;
             }
 
             impl Readable for $name {
                 #[inline]
-                fn read_from<T: std::io::Read>(_buf: &mut T) -> Result<Self, Error> {
+                fn read_from<__T: std::io::Read>(_buf: &mut __T) -> $crate::TetsuResult<Self> {
                     Ok(Self {
                         $(
                             $field_name: <$field_type>::read_from(_buf)?,
@@ -168,8 +149,8 @@ macro_rules! protocol_impl {
             impl Writable for $name {
                 #[inline]
                 #[allow(unused_variables)]
-                fn write_to<T: std::io::Write>(&self, buf: &mut T) -> Result<(), Error> {
-                    VarInt(Self::ID).write_to(buf)?;
+                fn write_to<__T: std::io::Write>(&self, buf: &mut __T) -> $crate::TetsuResult<()> {
+                    $crate::versions::common::VarInt(Self::ID).write_to(buf)?;
                     $(
                         self.$field_name.write_to(buf)?;
                     )*
@@ -178,14 +159,14 @@ macro_rules! protocol_impl {
             }
 
             impl TryFrom<$event_type> for $name {
-                type Error = Error;
+                type Error = $crate::errors::Error;
 
                 #[inline]
                 $from_event
             }
 
-            impl TryFrom<$name> for Event {
-                type Error = Error;
+            impl TryFrom<$name> for event::Event {
+                type Error = $crate::errors::Error;
 
                 #[inline]
                 $to_event

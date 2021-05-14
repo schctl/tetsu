@@ -1,28 +1,18 @@
-//! This module defines serializable types over the network.
-//! The type name indicates the type that is sent/to be sent.
-//! It's methods return/write the equivalent type.
+//! Common implementations for all protocol versions.
 
 use crate::errors::*;
+use crate::event::*;
+use crate::serialization::*;
 
 use std::io::{self, prelude::*};
 use std::marker::PhantomData;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use serde::{Deserialize, Serialize};
 
 pub use nbt::Blob as NbtBlob;
 pub use uuid::Uuid;
 
-pub trait Readable: Sized {
-    fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self>;
-}
-
-pub trait Writable: Sized {
-    fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()>;
-}
-
 // -----------------------------------
-// All type implementations
 // https://wiki.vg/Protocol#Data_types
 // -----------------------------------
 
@@ -253,29 +243,6 @@ impl Writable for String {
 
 // ---- Chat ---------------
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
-pub struct Action {
-    action: String,
-    value: String,
-}
-
-/// Information that defines contents/style of a chat message.
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct Chat {
-    pub text: Option<String>,
-    pub translate: Option<String>,
-    pub bold: Option<bool>,
-    pub italic: Option<bool>,
-    pub underlined: Option<bool>,
-    pub strikethrough: Option<bool>,
-    pub obfuscated: Option<bool>,
-    pub color: Option<String>,
-    pub click_event: Option<Action>,
-    pub hover_event: Option<Action>,
-    pub extra: Option<Vec<Self>>,
-}
-
 impl Readable for Chat {
     #[inline]
     fn read_from<T: io::Read>(buf: &mut T) -> TetsuResult<Self> {
@@ -287,24 +254,6 @@ impl Writable for Chat {
     #[inline]
     fn write_to<T: io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
         serde_json::to_string(&self)?.write_to(buf)
-    }
-}
-
-impl Default for Chat {
-    fn default() -> Self {
-        Self {
-            text: None,
-            translate: None,
-            bold: None,
-            italic: None,
-            underlined: None,
-            strikethrough: None,
-            obfuscated: None,
-            color: None,
-            click_event: None,
-            hover_event: None,
-            extra: None,
-        }
     }
 }
 
@@ -405,7 +354,7 @@ impl Writable for Uuid {
 
 // ---- Byte Arrays --------
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub struct ByteArrayVarInt(pub usize, pub Vec<u8>);
 
 impl Readable for ByteArrayVarInt {
@@ -428,7 +377,7 @@ impl Writable for ByteArrayVarInt {
 
 // ---- Arrays -------------
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub struct GenericArray<L: Into<usize> + From<usize> + Readable + Writable, C: Readable + Writable>(
     pub usize,
     pub Vec<C>,

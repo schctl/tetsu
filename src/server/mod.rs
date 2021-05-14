@@ -10,7 +10,7 @@ use tetsu::event;
 let mut connection = server::connection::EncryptedConnection::new(
     "127.0.0.1",
     25565,
-    event::ProtocolVersion::V47
+    ProtocolVersion::V47
 )
 .unwrap();
 ```
@@ -48,14 +48,13 @@ loop {
 */
 use crate::crypto;
 use crate::errors::*;
-use crate::event::{self, Event, ProtocolVersion, ServerVersion};
+use crate::event::*;
 use crate::mojang::User;
 
 use std::sync::Mutex;
 use std::time;
 
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
+use log::{info, warn};
 
 pub mod connection;
 
@@ -139,22 +138,22 @@ impl Server {
         };
 
         let mut connection =
-            connection::EncryptedConnection::new(address, port, event::ProtocolVersion::V47)?;
+            connection::EncryptedConnection::new(address, port, ProtocolVersion::V47)?;
 
-        connection.set_state(&event::EventState::Handshake);
+        connection.set_state(&EventState::Handshake);
 
         connection
-            .send_event(Event::Handshake(event::Handshake {
+            .send_event(Event::Handshake(Handshake {
                 server_address: address.to_owned(),
                 server_port: port,
-                next_state: event::EventState::Status,
+                next_state: EventState::Status,
             }))
             .unwrap();
 
-        connection.set_state(&event::EventState::Status);
+        connection.set_state(&EventState::Status);
 
         connection
-            .send_event(Event::StatusRequest(event::StatusRequest {}))
+            .send_event(Event::StatusRequest(StatusRequest {}))
             .unwrap();
 
         Ok(match connection.read_event()? {
@@ -185,24 +184,22 @@ impl Server {
             connection::SocketAddr::V6(p) => (format!("{}", p.ip()), p.port()),
         };
 
-        self.connection
-            .lock()?
-            .set_state(&event::EventState::Handshake);
+        self.connection.lock()?.set_state(&EventState::Handshake);
 
         self.connection
             .lock()?
-            .send_event(Event::Handshake(event::Handshake {
+            .send_event(Event::Handshake(Handshake {
                 server_address: address,
                 server_port: port,
-                next_state: event::EventState::Login,
+                next_state: EventState::Login,
             }))
             .unwrap();
 
-        self.connection.lock()?.set_state(&event::EventState::Login);
+        self.connection.lock()?.set_state(&EventState::Login);
 
         self.connection
             .lock()?
-            .send_event(Event::LoginStart(event::LoginStart {
+            .send_event(Event::LoginStart(LoginStart {
                 name: user.selected_profile.name.clone(),
             }))
             .unwrap();
@@ -213,7 +210,7 @@ impl Server {
                 warn!("Server running in offline mode. Logging in.");
                 info!("Login success at: {} ms!", start.elapsed().as_millis());
                 self.connected_user = Some(user);
-                self.connection.lock()?.set_state(&event::EventState::Play);
+                self.connection.lock()?.set_state(&EventState::Play);
                 return Ok(());
             }
             _ => {
@@ -223,7 +220,7 @@ impl Server {
             }
         };
 
-        let mut encryption_response = event::EncryptionResponse {
+        let mut encryption_response = EncryptionResponse {
             shared_secret: vec![],
             verify_token: vec![],
         };
@@ -270,7 +267,7 @@ impl Server {
             };
         }
 
-        self.connection.lock()?.set_state(&event::EventState::Play);
+        self.connection.lock()?.set_state(&EventState::Play);
 
         Ok(())
     }

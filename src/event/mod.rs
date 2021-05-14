@@ -34,12 +34,12 @@ dispatcher.write_event(
 use log::{debug, error, info, warn};
 
 use crate::errors::*;
-use crate::packet::*;
 use crate::versions;
+
+use uuid::Uuid;
 
 pub mod dispatcher;
 pub mod types;
-
 pub use types::*;
 
 /**
@@ -242,6 +242,12 @@ pub struct Statistic {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Statistics {
     pub values: Vec<Statistic>,
+}
+
+/// Sent to update the player list on a client.
+#[derive(Debug, PartialEq, Clone)]
+pub struct PlayerInfoUpdate {
+    pub players: Vec<PlayerListInfo>,
 }
 
 /// Sent to update player abilities.

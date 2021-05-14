@@ -1,7 +1,8 @@
+//! Types used by events.
+
 use serde::{Deserialize, Serialize};
 use serde_repr::*;
-
-use crate::packet::*;
+use uuid::Uuid;
 
 /// All supported protocol versions.
 #[non_exhaustive]
@@ -36,7 +37,7 @@ pub enum EventDirection {
 // Event field types ------------
 
 /// Gamemode of a level.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Gamemode {
     Survival,
     Creative,
@@ -45,7 +46,7 @@ pub enum Gamemode {
 }
 
 /// Dimension of a world.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Dimension {
     Nether,
     Overworld,
@@ -53,7 +54,7 @@ pub enum Dimension {
 }
 
 /// Difficulty of a level.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Difficulty {
     Peaceful,
     Easy,
@@ -62,7 +63,7 @@ pub enum Difficulty {
 }
 
 /// General server description.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(untagged)]
 pub enum ServerDescription {
     Short(String),
@@ -72,26 +73,26 @@ pub enum ServerDescription {
 /// Long server description.
 ///
 /// **Warning:** All fields haven't been covered yet.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct ServerDescriptionLong {
     pub text: String,
 }
 
 /// General server player information.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct ServerPlayers {
     pub max: u32,
     pub online: u16,
 }
 
 /// Version the server is running on.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct ServerVersion {
     pub name: String,
     pub protocol: ProtocolVersion,
 }
 /// Server information such as version, online players, etc.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct ServerInformation {
     pub description: ServerDescription,
     pub players: ServerPlayers,
@@ -99,11 +100,54 @@ pub struct ServerInformation {
 }
 
 /// Coordinates in a world.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Position {
     pub x: i64,
     pub y: i64,
     pub z: i64,
+}
+
+// ---- Chat ---------------
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+pub struct Action {
+    action: String,
+    value: String,
+}
+
+/// Information that defines contents/style of a chat message.
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Chat {
+    pub text: Option<String>,
+    pub translate: Option<String>,
+    pub bold: Option<bool>,
+    pub italic: Option<bool>,
+    pub underlined: Option<bool>,
+    pub strikethrough: Option<bool>,
+    pub obfuscated: Option<bool>,
+    pub color: Option<String>,
+    pub click_event: Option<Action>,
+    pub hover_event: Option<Action>,
+    pub extra: Option<Vec<Self>>,
+}
+
+impl Default for Chat {
+    fn default() -> Self {
+        Self {
+            text: None,
+            translate: None,
+            bold: None,
+            italic: None,
+            underlined: None,
+            strikethrough: None,
+            obfuscated: None,
+            color: None,
+            click_event: None,
+            hover_event: None,
+            extra: None,
+        }
+    }
 }
 
 // Player Infos -------
@@ -155,9 +199,4 @@ pub enum PlayerInfoAction {
 pub struct PlayerListInfo {
     pub uuid: Uuid,
     pub action: PlayerInfoAction,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct PlayerInfoUpdate {
-    pub players: Vec<PlayerListInfo>,
 }

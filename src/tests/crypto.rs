@@ -1,4 +1,4 @@
-use crate::crypto::{self, hexdigest};
+use crate::crypto::*;
 
 #[test]
 fn test_hexdigest() {
@@ -9,7 +9,7 @@ fn test_hexdigest() {
     ];
 
     for (n, h) in verified.iter() {
-        let mut hasher = crypto::Sha1::new();
+        let mut hasher = Sha1::new();
         hasher.update(n.as_bytes());
         assert_eq!(hexdigest(hasher), h.to_owned())
     }

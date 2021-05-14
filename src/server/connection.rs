@@ -6,8 +6,7 @@ use crate::event::*;
 
 pub use std::net::SocketAddr;
 
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
+use log::info;
 
 /// Encrypted connection to a Minecraft server.
 pub struct EncryptedConnection {
