@@ -30,9 +30,6 @@ dispatcher.write_event(
 ```
 */
 
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
-
 use crate::errors::*;
 use crate::versions;
 

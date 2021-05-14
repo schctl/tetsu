@@ -1,4 +1,6 @@
-# Implementing packet types
+# Structure
+
+## Implementing packet types
 
 All protocol version must be able to convert native types to corresponding `event::types`.
 

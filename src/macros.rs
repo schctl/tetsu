@@ -39,7 +39,9 @@ macro_rules! protocol_impl {
             direction: &event::EventDirection,
             compression_threshold: i32
         ) -> $crate::TetsuResult<event::Event> {
-            let mut bytes = vec![0; $crate::versions::common::VarInt::read_from(buf)?.0 as usize];
+            let total_len = $crate::versions::common::VarInt::read_from(buf)?.0 as usize;
+
+            let mut bytes = vec![0; total_len];
 
             buf.read_exact(&mut bytes)?;
             let mut bytes = std::io::Cursor::new(bytes);
@@ -48,12 +50,16 @@ macro_rules! protocol_impl {
                 let uncompressed_size = $crate::versions::common::VarInt::read_from(&mut bytes)?.0;
 
                 if uncompressed_size > 0 {
-                    let mut new_bytes = Vec::with_capacity(uncompressed_size as usize);
+                    let mut new_bytes = vec![0; uncompressed_size as usize];
                     let mut reader = ZlibDecoder::new(bytes);
 
-                    reader.read_to_end(&mut new_bytes)?;
+                    reader.read_exact(&mut new_bytes)?;
                     bytes = std::io::Cursor::new(new_bytes);
                 }
+            } else {
+                let mut new_bytes = vec![0; total_len];
+                bytes.read_exact(&mut new_bytes)?;
+                bytes = std::io::Cursor::new(new_bytes);
             }
 
             let id = $crate::versions::common::VarInt::read_from(&mut bytes)?.0;

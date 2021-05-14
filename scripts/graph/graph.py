@@ -38,8 +38,8 @@ def plot():
                 j.legend(["Read", "Write"])
                 j.set_title(event_type)
 
-                print("[{}] Average Read: {}", event_type, sum(read_times) / len(read_times))
-                print("[{}] Average Write: {}", event_type, sum(write_times) / len(write_times))
+                print(f"[{event_type}] Average Read:", sum(read_times) / len(read_times))
+                print(f"[{event_type}] Average Write:", sum(write_times) / len(write_times))
 
                 index += 1
                 if index >= len(data):

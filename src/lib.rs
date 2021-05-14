@@ -36,7 +36,7 @@ loop {
 */
 
 #![allow(dead_code)]
-#![doc(html_favicon_url = "https://raw.githubusercontent.com/schctl/tetsu/master/res/favicon.icon")]
+#![doc(html_favicon_url = "https://raw.githubusercontent.com/schctl/tetsu/master/res/favicon.ico")]
 #![doc(html_logo_url = "https://raw.githubusercontent.com/schctl/tetsu/master/res/logo.png")]
 
 #[macro_use]

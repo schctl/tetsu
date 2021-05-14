@@ -10,7 +10,7 @@ use tetsu::event;
 let mut connection = server::connection::EncryptedConnection::new(
     "127.0.0.1",
     25565,
-    ProtocolVersion::V47
+    event::ProtocolVersion::V47
 )
 .unwrap();
 ```

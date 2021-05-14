@@ -24,22 +24,22 @@ env_logger = "^0.8"
 
 [dependencies]
 # Crypto
-aes = "^0.7"
-cfb8 = "^0.7"
-openssl = "^0.10"
+aes = "0.7"
+cfb8 = "0.7"
+openssl = "0.10"
 
 # Misc
-log = "^0.4"
-ureq = "^2.1"
-flate2 = "^1.0"
+log = "0.4"
+ureq = "2.1"
+flate2 = "1.0"
 
 # Serialization
-byteorder = "^1.4"
-hematite-nbt = "^0.5"
-uuid = { version = "^0.8", default-features = false }
+byteorder = "1.4"
+hematite-nbt = "0.5"
+uuid = { version = "0.8", default-features = false }
 
+serde_repr = "0.1"
+serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-serde_repr = "^0.1"
-serde_json = "^1.0"
 
 tetsu_derive = { path = "./tetsu_derive" }
