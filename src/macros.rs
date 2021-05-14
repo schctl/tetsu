@@ -78,7 +78,7 @@ macro_rules! protocol_impl {
                 )*
                 _ => {
                     Err($crate::errors::Error::from($crate::errors::InvalidValue {
-                        expected: format!("not packet: [{:x}]:{:?}:{:?}", id, direction, state)
+                        expected: format!("not packet: [{:#x}]:{:?}:{:?}", id, direction, state)
                     }))
                 }
             }

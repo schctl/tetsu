@@ -86,6 +86,7 @@ pub enum Event {
     KeepAlive(KeepAlive),
     JoinGame(JoinGame),
     SpawnPosition(SpawnPosition),
+    PlayerPositionAndLook(PlayerPositionAndLook),
     HeldItemChange(HeldItemChange),
     Statistics(Statistics),
     PlayerInfoUpdate(PlayerInfoUpdate),
@@ -205,13 +206,22 @@ pub struct KeepAlive {
 #[derive(Debug, PartialEq, Clone)]
 pub struct JoinGame {
     pub id: i32,
-    pub gamemode: Gamemode,
     pub is_hardcore: bool,
-    pub dimension: Dimension,
-    pub difficulty: Difficulty,
+    pub gamemode: Gamemode,
+    pub worlds: Option<Vec<String>>,
+    pub dimension: Option<Dimension>,
+    pub dimension_registry: Option<nbt::Blob>,
+    pub dimension_codec: Option<nbt::Blob>,
+    pub world_name: Option<String>,
+    pub difficulty: Option<Difficulty>,
+    pub hashed_seed: Option<i64>,
     pub max_players: u32,
-    pub world_type: String,
+    pub level_type: Option<String>,
+    pub view_distance: Option<i32>,
     pub reduced_debug: bool,
+    pub enable_respawn: Option<bool>,
+    pub is_debug: Option<bool>,
+    pub is_flat: Option<bool>,
 }
 
 /// Spawn position of a player.

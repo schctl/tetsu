@@ -22,8 +22,6 @@ pub mod internal {
     use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
     use std::io;
 
-    // Protocol specific types ---
-
     // Position ----
 
     #[derive(Debug, PartialEq)]
@@ -108,7 +106,7 @@ pub mod internal {
         }
     }
 
-    // Player info ---
+    // Player info -------
 
     #[derive(Debug, PartialEq, Clone, ReadableStruct, WritableStruct)]
     pub struct InternalPlayerProperty {
@@ -472,6 +470,22 @@ protocol_impl! {
 
     // Status ------------------
 
+    (0x00) ServerBound Status StatusRequestPacket: StatusRequest {
+        from_event {
+            fn try_from(_: StatusRequest) -> TetsuResult<StatusRequestPacket> {
+                Ok(StatusRequestPacket {})
+            }
+        }
+        to_event {
+            fn try_from(_: StatusRequestPacket) -> TetsuResult<Event> {
+                Ok(Event::StatusRequest(StatusRequest {}))
+            }
+        }
+        fields {
+
+        }
+    }
+
     (0x01) ServerBound Status StatusPingPacket: Ping {
         from_event {
             fn try_from(item: Ping) -> TetsuResult<StatusPingPacket> {
@@ -492,42 +506,6 @@ protocol_impl! {
         }
     }
 
-    (0x01) ClientBound Status StatusPongPacket: Pong {
-        from_event {
-            fn try_from(item: Pong) -> TetsuResult<StatusPongPacket> {
-                Ok(StatusPongPacket {
-                    payload: item.payload
-                })
-            }
-        }
-        to_event {
-            fn try_from(item: StatusPongPacket) -> TetsuResult<Event> {
-                Ok(Event::Pong(Pong {
-                    payload: item.payload
-                }))
-            }
-        }
-        fields {
-            payload: Long,
-        }
-    }
-
-    (0x00) ServerBound Status StatusRequestPacket: StatusRequest {
-        from_event {
-            fn try_from(_: StatusRequest) -> TetsuResult<StatusRequestPacket> {
-                Ok(StatusRequestPacket {})
-            }
-        }
-        to_event {
-            fn try_from(_: StatusRequestPacket) -> TetsuResult<Event> {
-                Ok(Event::StatusRequest(StatusRequest {}))
-            }
-        }
-        fields {
-
-        }
-    }
-
     (0x00) ClientBound Status StatusResponsePacket: StatusResponse {
         from_event {
             fn try_from(item: StatusResponse) -> TetsuResult<StatusResponsePacket> {
@@ -545,6 +523,26 @@ protocol_impl! {
         }
         fields {
             response: String,
+        }
+    }
+
+    (0x01) ClientBound Status StatusPongPacket: Pong {
+        from_event {
+            fn try_from(item: Pong) -> TetsuResult<StatusPongPacket> {
+                Ok(StatusPongPacket {
+                    payload: item.payload
+                })
+            }
+        }
+        to_event {
+            fn try_from(item: StatusPongPacket) -> TetsuResult<Event> {
+                Ok(Event::Pong(Pong {
+                    payload: item.payload
+                }))
+            }
+        }
+        fields {
+            payload: Long,
         }
     }
 
@@ -608,6 +606,29 @@ protocol_impl! {
         }
     }
 
+    (0x01) ServerBound Login EncryptionResponseVarIntPacket: EncryptionResponse {
+        from_event {
+            fn try_from(item: EncryptionResponse) -> TetsuResult<EncryptionResponseVarIntPacket> {
+                Ok(EncryptionResponseVarIntPacket {
+                    shared_secret: ByteArrayVarInt(item.shared_secret.len(), item.shared_secret),
+                    verify_token: ByteArrayVarInt(item.verify_token.len(), item.verify_token)
+                })
+            }
+        }
+        to_event {
+            fn try_from(item: EncryptionResponseVarIntPacket) -> TetsuResult<Event> {
+                Ok(Event::EncryptionResponse(EncryptionResponse {
+                    shared_secret: item.shared_secret.1,
+                    verify_token: item.verify_token.1
+                }))
+            }
+        }
+        fields {
+            shared_secret: ByteArrayVarInt,
+            verify_token: ByteArrayVarInt,
+        }
+    }
+
     (0x00) ClientBound Login DisconnectPacket: Disconnect {
         from_event {
             fn try_from(item: Disconnect) -> TetsuResult<DisconnectPacket> {
@@ -665,29 +686,6 @@ protocol_impl! {
         fields {
             server_id: String,
             public_key: ByteArrayVarInt,
-            verify_token: ByteArrayVarInt,
-        }
-    }
-
-    (0x01) ServerBound Login EncryptionResponseVarIntPacket: EncryptionResponse {
-        from_event {
-            fn try_from(item: EncryptionResponse) -> TetsuResult<EncryptionResponseVarIntPacket> {
-                Ok(EncryptionResponseVarIntPacket {
-                    shared_secret: ByteArrayVarInt(item.shared_secret.len(), item.shared_secret),
-                    verify_token: ByteArrayVarInt(item.verify_token.len(), item.verify_token)
-                })
-            }
-        }
-        to_event {
-            fn try_from(item: EncryptionResponseVarIntPacket) -> TetsuResult<Event> {
-                Ok(Event::EncryptionResponse(EncryptionResponse {
-                    shared_secret: item.shared_secret.1,
-                    verify_token: item.verify_token.1
-                }))
-            }
-        }
-        fields {
-            shared_secret: ByteArrayVarInt,
             verify_token: ByteArrayVarInt,
         }
     }
@@ -763,10 +761,10 @@ protocol_impl! {
                 Ok(JoinGamePacket {
                     id: item.id,
                     gamemode: internal::gamemode_to_byte(&item.gamemode) | (if item.is_hardcore { 0x80 } else { 0x00 }),
-                    dimension: internal::dimension_to_byte(&item.dimension),
-                    difficulty: internal::difficulty_to_byte(&item.difficulty),
+                    dimension: internal::dimension_to_byte(&item.dimension.unwrap()),
+                    difficulty: internal::difficulty_to_byte(&item.difficulty.unwrap()),
                     max_players: item.max_players as u8,
-                    level_type: item.world_type,
+                    level_type: item.level_type.unwrap(),
                     reduced_debug: item.reduced_debug
                 })
             }
@@ -777,11 +775,20 @@ protocol_impl! {
                     id: item.id,
                     gamemode: internal::byte_to_gamemode(item.gamemode),
                     is_hardcore: item.gamemode & 0x80 == 0x80,
-                    dimension: internal::byte_to_dimension(item.dimension),
-                    difficulty: internal::byte_to_difficulty(item.difficulty),
+                    worlds: None,
+                    dimension: Some(internal::byte_to_dimension(item.dimension)),
+                    dimension_registry: None,
+                    dimension_codec: None,
+                    world_name: None,
+                    difficulty: Some(internal::byte_to_difficulty(item.difficulty)),
+                    hashed_seed: None,
                     max_players: item.max_players as u32,
-                    world_type: item.level_type,
-                    reduced_debug: item.reduced_debug
+                    level_type: Some(item.level_type),
+                    view_distance: None,
+                    reduced_debug: item.reduced_debug,
+                    enable_respawn: None,
+                    is_debug: None,
+                    is_flat: None,
                 }))
             }
         }
@@ -813,6 +820,107 @@ protocol_impl! {
         }
         fields {
             location: internal::PositionXYZ,
+        }
+    }
+
+    (0x08) ClientBound Play PlayerPositionAndLookPacket: PlayerPositionAndLook {
+        from_event {
+            fn try_from(item: PlayerPositionAndLook) -> TetsuResult<Self> {
+                let mut flags = 0;
+
+                let x = match item.x {
+                    RelativeOrAbsolute::Relative(x) => {
+                        flags |= 0x01;
+                        x
+                    },
+                    RelativeOrAbsolute::Absolute(x) => x
+                };
+                let y = match item.y {
+                    RelativeOrAbsolute::Relative(x) => {
+                        flags |= 0x02;
+                        x
+                    },
+                    RelativeOrAbsolute::Absolute(x) => x
+                };
+                let z = match item.z {
+                    RelativeOrAbsolute::Relative(x) => {
+                        flags |= 0x04;
+                        x
+                    },
+                    RelativeOrAbsolute::Absolute(x) => x
+                };
+
+                let yaw = match item.yaw {
+                    RelativeOrAbsolute::Relative(x) => {
+                        flags |= 0x08;
+                        x
+                    },
+                    RelativeOrAbsolute::Absolute(x) => x
+                };
+                let pitch = match item.pitch {
+                    RelativeOrAbsolute::Relative(x) => {
+                        flags |= 0x10;
+                        x
+                    },
+                    RelativeOrAbsolute::Absolute(x) => x
+                };
+
+                Ok(Self {
+                    x,
+                    y,
+                    z,
+                    yaw,
+                    pitch,
+                    flags
+                })
+            }
+        }
+        to_event {
+            fn try_from(item: PlayerPositionAndLookPacket) -> TetsuResult<Event> {
+                let x = if item.flags | 0x01 == 0x01 {
+                    RelativeOrAbsolute::Relative(item.x)
+                } else {
+                    RelativeOrAbsolute::Absolute(item.x)
+                };
+                let y = if item.flags | 0x02 == 0x02 {
+                    RelativeOrAbsolute::Relative(item.y)
+                } else {
+                    RelativeOrAbsolute::Absolute(item.y)
+                };
+                let z = if item.flags | 0x04 == 0x04 {
+                    RelativeOrAbsolute::Relative(item.z)
+                } else {
+                    RelativeOrAbsolute::Absolute(item.z)
+                };
+
+                let yaw = if item.flags | 0x08 == 0x08 {
+                    RelativeOrAbsolute::Relative(item.yaw)
+                } else {
+                    RelativeOrAbsolute::Absolute(item.yaw)
+                };
+                let pitch = if item.flags | 0x10 == 0x10 {
+                    RelativeOrAbsolute::Relative(item.pitch)
+                } else {
+                    RelativeOrAbsolute::Absolute(item.pitch)
+                };
+
+                Ok(Event::PlayerPositionAndLook(PlayerPositionAndLook {
+                    x,
+                    y,
+                    z,
+                    yaw,
+                    pitch,
+                    teleport_id: None
+                }))
+            }
+        }
+        fields {
+            x: Double,
+            y: Double,
+            z: Double,
+            yaw: Float,
+            pitch: Float,
+            flags: Byte,
         }
     }
 

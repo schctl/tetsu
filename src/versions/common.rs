@@ -427,6 +427,17 @@ where
     }
 }
 
+impl<L, C> From<GenericArray<L, C>> for Vec<C>
+where
+    L: Into<usize> + From<usize> + Readable + Writable,
+    C: Readable + Writable,
+{
+    #[inline]
+    fn from(item: GenericArray<L, C>) -> Self {
+        item.1
+    }
+}
+
 // ---- Vec ----------------
 
 impl Readable for Vec<UnsignedByte> {

@@ -150,7 +150,7 @@ impl Default for Chat {
     }
 }
 
-// Player Infos -------
+// ---- Player Infos -------
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct PlayerProperty {
@@ -199,4 +199,22 @@ pub enum PlayerInfoAction {
 pub struct PlayerListInfo {
     pub uuid: Uuid,
     pub action: PlayerInfoAction,
+}
+
+// ---- Position and Look ---
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum RelativeOrAbsolute<T> {
+    Relative(T),
+    Absolute(T),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct PlayerPositionAndLook {
+    pub x: RelativeOrAbsolute<f64>,
+    pub y: RelativeOrAbsolute<f64>,
+    pub z: RelativeOrAbsolute<f64>,
+    pub yaw: RelativeOrAbsolute<f32>,
+    pub pitch: RelativeOrAbsolute<f32>,
+    pub teleport_id: Option<i32>,
 }
