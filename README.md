@@ -6,7 +6,11 @@
     <a href="https://github.com/schctl/tetsu/actions/workflows/test.yml"><img alt="Workflow Status" height=26 src="https://img.shields.io/github/workflow/status/schctl/tetsu/Test?style=for-the-badge&logo=Github" /></a>
 </p>
 
-`Tetsu` is a highly experimental version agnostic implementation of Minecraft's [server protocols](https://wiki.vg/Protocol) written in Rust. I'm currently trying to make this work with server versions `1.8.*` and `1.16.*`. The next goal is to implement all `Play` packets for version 47 of the protocol before `v0.1.0`.
+`Tetsu` is a highly experimental implementation of Minecraft's [server protocols](https://wiki.vg/Protocol) in Rust, that tries to make them easier to use. I'm currently trying to make this work with server versions `1.8.*` and `1.16.*`. The next goal is to implement all `Play` packets for version 47 of the protocol before `v0.1.0`.
+
+## Building on windows
+
+`Tetsu` relies on [OpenSSL](https://www.openssl.org/) for some cryptographic functions. So, to be able to build this on windows, OpenSSL must be installed first. See installation instructions [here](https://docs.rs/crate/openssl-sys/0.9.19#Windows-MSVC).
 
 ## Examples
 
@@ -37,7 +41,3 @@ fn main() {
     }
 }
 ```
-
-#### Credits
-
-- [iceiix/Stevenarella](https://github.com/iceiix/stevenarella) as reference for compressed packet deserialization and `VarInt` (de)serialization.

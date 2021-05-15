@@ -218,3 +218,13 @@ pub struct PlayerPositionAndLook {
     pub pitch: RelativeOrAbsolute<f32>,
     pub teleport_id: Option<i32>,
 }
+
+// ---- Slot ------
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Slot {
+    pub item_id: Option<i32>,
+    pub item_count: i8,
+    pub damage: Option<i16>,
+    pub nbt: Option<nbt::Blob>,
+}

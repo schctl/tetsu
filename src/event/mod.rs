@@ -69,30 +69,44 @@ match event {
 #[non_exhaustive]
 #[derive(Debug, PartialEq, Clone)]
 pub enum Event {
-    Ping(Ping),
-    Pong(Pong),
-    StatusRequest(StatusRequest),
-    StatusResponse(StatusResponse),
-
     Handshake(Handshake),
 
-    LoginStart(LoginStart),
+    // Client bound ----------------------------------
+    Pong(Pong),
+    StatusResponse(StatusResponse),
+
+    // Server bound ----------------------------------
+    Ping(Ping),
+    StatusRequest(StatusRequest),
+
+    // Client bound ----------------------------------
     Disconnect(Disconnect),
     EncryptionRequest(EncryptionRequest),
-    EncryptionResponse(EncryptionResponse),
     LoginSuccess(LoginSuccess),
     SetCompression(SetCompression),
 
+    // Server bound ----------------------------------
+    LoginStart(LoginStart),
+    EncryptionResponse(EncryptionResponse),
+
+    // Client bound ----------------------------------
     KeepAlive(KeepAlive),
     JoinGame(JoinGame),
+    TimeUpdate(TimeUpdate),
     SpawnPosition(SpawnPosition),
     PlayerPositionAndLook(PlayerPositionAndLook),
     HeldItemChange(HeldItemChange),
+    WindowItemsUpdate(WindowItemsUpdate),
     Statistics(Statistics),
     PlayerInfoUpdate(PlayerInfoUpdate),
     PlayerAbility(PlayerAbility),
     PluginMessage(PluginMessage),
     ServerDifficultyUpdate(ServerDifficultyUpdate),
+    WorldBorder(WorldBorder),
+    ChangeGameState(ChangeGameState),
+
+    // Server bound ----------------------------------
+    KeepAliveResponse(KeepAliveResponse),
 }
 
 unsafe impl Send for Event {}
@@ -202,6 +216,13 @@ pub struct KeepAlive {
     pub id: i64,
 }
 
+/// Sent in response to [`KeepAlive`].
+#[derive(Debug, PartialEq, Clone)]
+pub struct KeepAliveResponse {
+    /// Payload.
+    pub id: i64,
+}
+
 /// Sent when a player joins a server.
 #[derive(Debug, PartialEq, Clone)]
 pub struct JoinGame {
@@ -224,6 +245,12 @@ pub struct JoinGame {
     pub is_flat: Option<bool>,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct TimeUpdate {
+    pub world_age: i64,
+    pub time_of_day: i64,
+}
+
 /// Spawn position of a player.
 #[derive(Debug, PartialEq, Clone)]
 pub struct SpawnPosition {
@@ -236,6 +263,13 @@ pub struct SpawnPosition {
 pub struct HeldItemChange {
     /// Spawn position coordinates.
     pub slot: i8,
+}
+
+/// Change player's selected slot.
+#[derive(Debug, PartialEq, Clone)]
+pub struct WindowItemsUpdate {
+    pub window_id: u8,
+    pub slots: Vec<Slot>,
 }
 
 /// A single stat value.
@@ -285,4 +319,74 @@ pub struct PluginMessage {
 pub struct ServerDifficultyUpdate {
     pub difficulty: Difficulty,
     pub difficulty_locked: bool,
+}
+
+/// Sent to update the world's border.
+#[derive(Debug, PartialEq, Clone)]
+pub enum WorldBorder {
+    SetSize {
+        diameter: f64,
+    },
+    LerpSize {
+        old_diameter: f64,
+        new_diameter: f64,
+        speed: i64,
+    },
+    SetCenter {
+        x: f64,
+        y: f64,
+    },
+    Initialize {
+        x: f64,
+        y: f64,
+        old_diameter: f64,
+        new_diameter: f64,
+        speed: i64,
+        portal_teleport_boundary: i32,
+        warning_blocks: i32,
+        warning_time: i32,
+    },
+    SetWarnTime {
+        warning_time: i32,
+    },
+    SetWarnBlocks {
+        warning_blocks: i32,
+    },
+}
+
+/// Win game state.
+#[derive(Debug, PartialEq, Clone)]
+pub enum AfterGameWin {
+    Respawn,
+    CreditsAndRespawn,
+}
+
+/// Demo message
+#[derive(Debug, PartialEq, Clone)]
+pub enum DemoEventAction {
+    Show,
+    ShowMovementControls,
+    ShowJumpControl,
+    ShowInventoryControl,
+    Over,
+}
+
+/// Sent to change any game state
+#[derive(Debug, PartialEq, Clone)]
+pub enum ChangeGameState {
+    NoRespawnBlock,
+    EndRaining,
+    BeginRaining,
+    GamemodeUpdate(Gamemode),
+    WinGame(AfterGameWin),
+    DemoEvent(DemoEventAction),
+    ArrowHitPlayer,
+    RainLevel(f32),
+    ThunderLevel(f32),
+    PufferfishSting,
+    ElderGuardianAppear,
+    EnableRespawn(bool),
+    FadeValue(f32),
+    FadeTime(f32),
+    MobAppear,
 }

@@ -231,6 +231,7 @@ impl Server {
             crypto::rand_bytes(&mut shared)?;
 
             let pkey = crypto::Rsa::public_key_from_der(&encryption_request.public_key)?;
+
             encryption_response.shared_secret = crypto::public_encrypt(&pkey, &shared)?;
             encryption_response.verify_token =
                 crypto::public_encrypt(&pkey, &encryption_request.verify_token)?;

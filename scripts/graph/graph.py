@@ -8,44 +8,56 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
+def abspath(p):
+    return os.path.join(Path(__file__).parent, p)
+
 def plot():
-    with open(os.path.join(Path(__file__).parent, "../../target/rw.json")) as f:
-        data = json.load(f)
+    for fpath in os.listdir(abspath("../../target")):
+        if not fpath.startswith("protocol-ser-test-"):
+            continue
 
-        fig, subplots = plt.subplots(math.ceil(math.sqrt(len(data))), math.floor(math.sqrt(len(data))))
+        with open(abspath(f"../../target/{fpath}")) as f:
+            data = json.load(f)
 
-        index = 0
+            print(f"Showing {fpath}")
 
-        ylim = max(
-            [
-                max(i[0] + i[1]) for i in data.values()
-            ]
-        ) + 2500
+            fig, subplots = plt.subplots(math.ceil(math.sqrt(len(data))), math.floor(math.sqrt(len(data))))
 
-        for i in subplots:
-            for j in i:
-                event_type = list(data.keys())[index]
+            index = 0
 
-                read_times = data[event_type][0]
-                write_times = data[event_type][1]
+            ylim = max(
+                [
+                    max(i[0] + i[1]) for i in data.values()
+                ]
+            ) + 2500
 
-                j.plot(read_times)
-                j.plot(write_times)
+            for i in subplots:
+                if not isinstance(i, list):
+                    i = [i]
 
-                j.set_ylim([100, ylim])
-                j.set_xlabel("Run")
-                j.set_ylabel("ns")
-                j.legend(["Read", "Write"])
-                j.set_title(event_type)
+                for j in i:
+                    event_type = list(data.keys())[index]
 
-                print(f"[{event_type}] Average Read:", sum(read_times) / len(read_times))
-                print(f"[{event_type}] Average Write:", sum(write_times) / len(write_times))
+                    read_times = data[event_type][0]
+                    write_times = data[event_type][1]
 
-                index += 1
-                if index >= len(data):
-                    break
+                    j.plot(read_times)
+                    j.plot(write_times)
 
-        plt.show()
+                    j.set_ylim([100, ylim])
+                    j.set_xlabel("Run")
+                    j.set_ylabel("ns")
+                    j.legend(["Read", "Write"])
+                    j.set_title(event_type)
+
+                    print(f"[{event_type}] Average Read:", sum(read_times) / len(read_times))
+                    print(f"[{event_type}] Average Write:", sum(write_times) / len(write_times))
+
+                    index += 1
+                    if index >= len(data):
+                        break
+
+            plt.show()
 
 if __name__ == '__main__':
     plot()
