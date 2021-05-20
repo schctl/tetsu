@@ -118,8 +118,11 @@ impl EncryptedTcpStream {
     /// Create a new TCP connection to the `address`.
     #[inline]
     pub fn connect(address: &str, cipher: Option<&[u8]>) -> TetsuResult<Self> {
+        let stream = TcpStream::connect(address).unwrap();
+        stream.set_nodelay(true).unwrap();
+
         Ok(Self {
-            stream: TcpStream::connect(address).unwrap(),
+            stream,
             cipher: match cipher {
                 Some(key) => Some(DefaultStreamCipher::new(key)?),
                 _ => None,
@@ -138,6 +141,18 @@ impl EncryptedTcpStream {
     #[inline]
     pub fn get_address(&self) -> SocketAddr {
         self.stream.peer_addr().unwrap()
+    }
+
+    /// Enable or disable the Nagle algorithm.
+    #[inline]
+    pub fn set_nodelay(&self, nodelay: bool) -> TetsuResult<()> {
+        Ok(self.stream.set_nodelay(nodelay)?)
+    }
+
+    /// Check if the Nagle algorithm is disabled.
+    #[inline]
+    pub fn nodelay(&self) -> TetsuResult<bool> {
+        Ok(self.stream.nodelay()?)
     }
 }
 

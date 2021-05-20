@@ -6,7 +6,7 @@ use crate::event::*;
 
 pub use std::net::SocketAddr;
 
-use log::info;
+use log::{debug, info};
 
 /// Encrypted connection to a Minecraft server.
 pub struct EncryptedConnection {
@@ -42,6 +42,7 @@ impl EncryptedConnection {
             "Switching connection state from {:?} -> {:?}",
             self.state, state
         );
+        debug!("TCP_NODELAY {}", self.stream.nodelay().unwrap());
         self.state = *state;
     }
 
