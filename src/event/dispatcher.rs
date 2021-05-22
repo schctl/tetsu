@@ -4,8 +4,8 @@ use crate::event::*;
 
 /// Wrapper around protocol specific event read/write impls.
 pub struct EventDispatcher<R: std::io::Read, W: std::io::Write> {
-    reader: fn(&mut R, &EventState, &EventDirection, i32) -> TetsuResult<Event>,
-    writer: fn(&mut W, Event, &EventState, &EventDirection, i32) -> TetsuResult<()>,
+    reader: Box<dyn Fn(&mut R, &EventState, &EventDirection, i32) -> TetsuResult<Event>>,
+    writer: Box<dyn Fn(&mut W, Event, &EventState, &EventDirection, i32) -> TetsuResult<()>>,
 }
 
 unsafe impl<R: std::io::Read, W: std::io::Write> Send for EventDispatcher<R, W> {}
@@ -17,12 +17,12 @@ impl<R: std::io::Read, W: std::io::Write> EventDispatcher<R, W> {
     pub fn new(version: &ProtocolVersion) -> Self {
         match version {
             ProtocolVersion::V47 => Self {
-                reader: versions::v47::read_event,
-                writer: versions::v47::write_event,
+                reader: versions::v47::get_read_callback(),
+                writer: versions::v47::get_write_callback(),
             },
             ProtocolVersion::V754 => Self {
-                reader: versions::v754::read_event,
-                writer: versions::v754::write_event,
+                reader: versions::v754::get_read_callback(),
+                writer: versions::v754::get_write_callback(),
             },
         }
     }
@@ -30,8 +30,8 @@ impl<R: std::io::Read, W: std::io::Write> EventDispatcher<R, W> {
     /// Create a new [`EventDispatcher`] from any read/write functions.
     #[inline]
     pub fn new_from_raw(
-        reader: fn(&mut R, &EventState, &EventDirection, i32) -> TetsuResult<Event>,
-        writer: fn(&mut W, Event, &EventState, &EventDirection, i32) -> TetsuResult<()>,
+        reader: Box<dyn Fn(&mut R, &EventState, &EventDirection, i32) -> TetsuResult<Event>>,
+        writer: Box<dyn Fn(&mut W, Event, &EventState, &EventDirection, i32) -> TetsuResult<()>>,
     ) -> TetsuResult<Self> {
         Ok(Self { reader, writer })
     }

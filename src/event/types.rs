@@ -116,7 +116,7 @@ pub struct Action {
 }
 
 /// Information that defines contents/style of a chat message.
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Chat {
     pub text: Option<String>,

@@ -11,12 +11,8 @@ exclude = [
     "res/*",
 ]
 
-[features]
-derive = []
-all = ["derive"]
-
 [profile.release]
-lto = "thin"
+lto = true
 codegen-units = 1
 
 [dev-dependencies]
@@ -41,5 +37,3 @@ uuid = { version = "0.8", default-features = false }
 serde_repr = "0.1"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-
-tetsu_derive = { path = "./tetsu_derive" }
