@@ -767,3 +767,27 @@ impl Writable for Difficulty {
             .write_to(_buf)
     }
 }
+
+impl Default for JoinGame {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            is_hardcore: false,
+            gamemode: Gamemode::Survival,
+            worlds: None,
+            dimension: None,
+            dimension_registry: None,
+            dimension_codec: None,
+            world_name: None,
+            difficulty: None,
+            hashed_seed: None,
+            max_players: 20,
+            level_type: None,
+            view_distance: None,
+            reduced_debug: false,
+            enable_respawn: None,
+            is_debug: None,
+            is_flat: None,
+        }
+    }
+}

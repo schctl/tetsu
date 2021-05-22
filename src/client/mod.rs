@@ -54,8 +54,8 @@ use std::time;
 
 use log::{info, warn};
 
-pub mod mojang;
 pub mod connection;
+pub mod mojang;
 
 /// High level wrapper around a connection to a Minecraft server.
 pub struct Client {

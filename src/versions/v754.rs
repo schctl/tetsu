@@ -139,19 +139,17 @@ impl V754Readable<Event> for JoinGame {
             is_hardcore,
             gamemode: Gamemode::try_from(gamemode as i32)?,
             worlds: Some(worlds.into()),
-            dimension: None,
             dimension_registry: Some(NbtBlob::read_from(buf)?),
             dimension_codec: Some(NbtBlob::read_from(buf)?),
             world_name: Some(String::read_from(buf)?),
-            difficulty: None,
             hashed_seed: Some(Long::read_from(buf)?),
             max_players: UnsignedByte::read_from(buf)? as u32,
-            level_type: None,
             view_distance: Some(VarInt::read_from(buf)?.0),
             reduced_debug: Bool::read_from(buf)?,
             enable_respawn: Some(Bool::read_from(buf)?),
             is_debug: Some(Bool::read_from(buf)?),
             is_flat: Some(Bool::read_from(buf)?),
+            ..Default::default()
         }))
     }
 }

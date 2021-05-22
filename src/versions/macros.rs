@@ -90,15 +90,16 @@ macro_rules! new_protocol_impl {
                 buf.read_exact(&mut bytes)?;
                 let mut bytes = &bytes[..];
 
+                let mut uncompressed_bytes;
+
                 if compression_threshold > 0 {
                     let uncompressed_len = VarInt::read_from(&mut bytes)?.0;
 
                     if uncompressed_len > 0 {
-                        let new_bytes = bytes;
-                        let mut bytes = vec![0; uncompressed_len as usize];
-                        let mut reader = _p_impl_ZlibDecoder::new(new_bytes);
-
-                        reader.read_exact(&mut bytes)?;
+                        uncompressed_bytes = vec![0; uncompressed_len as usize];
+                        let mut reader = _p_impl_ZlibDecoder::new(bytes);
+                        reader.read_exact(&mut uncompressed_bytes)?;
+                        bytes = &uncompressed_bytes[..];
                     }
                 }
 

@@ -310,20 +310,12 @@ impl V47Readable<Event> for JoinGame {
             id,
             gamemode: (gamemode as i32).try_into()?,
             is_hardcore: gamemode & 0x80 == 0x80,
-            worlds: None,
             dimension: Some(dimension),
-            dimension_registry: None,
-            dimension_codec: None,
-            world_name: None,
             difficulty: Some(difficulty),
-            hashed_seed: None,
             max_players: max_players as u32,
             level_type: Some(level_type),
-            view_distance: None,
             reduced_debug,
-            enable_respawn: None,
-            is_debug: None,
-            is_flat: None,
+            ..Default::default()
         }))
     }
 }
@@ -603,7 +595,7 @@ impl V47Readable<Event> for WindowItemsUpdate {
         }
         Ok(Event::WindowItemsUpdate(WindowItemsUpdate {
             window_id,
-            slots: slots,
+            slots,
         }))
     }
 }
@@ -624,6 +616,9 @@ impl V47Writable for WindowItemsUpdate {
 impl V47Readable<Event> for Statistics {
     fn v47_read<T: std::io::Read>(buf: &mut T) -> TetsuResult<Event> {
         let len = VarInt::read_from(buf)?.0 as usize;
+
+        println!("Statistics with len: {}", len);
+
         let mut values = Vec::with_capacity(len);
 
         for _ in 0..len {
