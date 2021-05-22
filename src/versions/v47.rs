@@ -180,6 +180,7 @@ new_protocol_impl! {
         (0x05, ClientBound, Play) => SpawnPosition,
         (0x08, ClientBound, Play) => PlayerPositionAndLook,
         (0x09, ClientBound, Play) => HeldItemChange,
+        (0x2f, ClientBound, Play) => SlotUpdate,
         (0x30, ClientBound, Play) => WindowItemsUpdate,
         (0x37, ClientBound, Play) => Statistics,
         (0x38, ClientBound, Play) => PlayerInfoUpdate,
@@ -582,6 +583,24 @@ impl V47Writable for Slot {
         self.item_count.write_to(buf)?;
         self.damage.unwrap().write_to(buf)?;
         self.nbt.clone().unwrap().write_to(buf)
+    }
+}
+
+impl V47Readable<Event> for SlotUpdate {
+    fn v47_read<T: std::io::Read>(buf: &mut T) -> TetsuResult<Event> {
+        Ok(Event::SlotUpdate(Self {
+            window_id: Byte::read_from(buf)?,
+            slot: Short::read_from(buf)?,
+            data: Slot::v47_read(buf)?
+        }))
+    }
+}
+
+impl V47Writable for SlotUpdate {
+    fn v47_write<T: std::io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
+        self.window_id.write_to(buf)?;
+        self.slot.write_to(buf)?;
+        self.data.v47_write(buf)
     }
 }
 

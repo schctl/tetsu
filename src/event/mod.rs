@@ -96,6 +96,7 @@ pub enum Event {
     SpawnPosition(SpawnPosition),
     PlayerPositionAndLook(PlayerPositionAndLook),
     HeldItemChange(HeldItemChange),
+    SlotUpdate(SlotUpdate),
     WindowItemsUpdate(WindowItemsUpdate),
     Statistics(Statistics),
     PlayerInfoUpdate(PlayerInfoUpdate),
@@ -265,7 +266,15 @@ pub struct HeldItemChange {
     pub slot: i8,
 }
 
-/// Change player's selected slot.
+/// Update a single window slot.
+#[derive(Debug, PartialEq, Clone)]
+pub struct SlotUpdate {
+    pub window_id: i8,
+    pub slot: i16,
+    pub data: Slot
+}
+
+/// Update player's window slots.
 #[derive(Debug, PartialEq, Clone)]
 pub struct WindowItemsUpdate {
     pub window_id: u8,

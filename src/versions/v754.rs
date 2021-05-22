@@ -73,6 +73,7 @@ new_protocol_impl! {
 
         // Play ==========================================
         // Client bound ----------------------------------
+        (0x15, ClientBound, Play) => SlotUpdate,
     }
 
     (read: V754Readable, v754_read;

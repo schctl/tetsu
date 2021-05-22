@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 Graph the output of `test_event_serialization`.
 """
