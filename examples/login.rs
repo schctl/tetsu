@@ -4,26 +4,25 @@ use std::env;
 use std::thread;
 use std::time;
 
+use tetsu::client;
 use tetsu::errors;
-use tetsu::mojang;
-use tetsu::server;
 
 fn main() {
     env_logger::builder()
         .filter(Some("tetsu"), log::LevelFilter::Debug)
         .init();
 
-    let user = mojang::User::authenticate(
+    let user = client::mojang::User::authenticate(
         env::var("MOJANG_USER").unwrap(),
         env::var("MOJANG_USER_PWD").unwrap(),
     );
 
-    let mut server = server::Server::new("127.0.0.1", None, None).unwrap();
+    let mut client = client::Client::new("127.0.0.1", None, None).unwrap();
 
-    server.connect_player(user).unwrap();
+    client.connect_user(user).unwrap();
 
     loop {
-        match server.read_event() {
+        match client.read_event() {
             Ok(e) => println!("{:?}", e),
             Err(e) => match e {
                 errors::ConnectionError::LockError(_) => {

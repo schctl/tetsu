@@ -2,12 +2,12 @@
 
 # Examples
 
-## Raw connection.
+## Raw connection
 ```no_run
-use tetsu::server;
+use tetsu::client;
 use tetsu::event;
 
-let mut connection = server::connection::EncryptedConnection::new(
+let mut connection = client::connection::EncryptedConnection::new(
     "127.0.0.1",
     25565,
     event::ProtocolVersion::V47
@@ -15,13 +15,13 @@ let mut connection = server::connection::EncryptedConnection::new(
 .unwrap();
 ```
 
-## Getting a server's version.
+## Getting a server's version name
 ```no_run
-use tetsu::server;
+use tetsu::client;
 
 println!(
     "Detected version of local server: {}",
-    server::Server::get_version("127.0.0.1", None)
+    client::Client::get_server_version("127.0.0.1", None)
         .unwrap()
         .name
 );
@@ -29,48 +29,44 @@ println!(
 
 ## Event loop
 ```no_run
-use tetsu::server;
-use tetsu::mojang;
+use tetsu::client;
 
-let user = mojang::User::authenticate(
+let user = client::mojang::User::authenticate(
     "user@email".to_owned(),
     "user_password".to_owned(),
 );
 
-let mut server = server::Server::new("127.0.0.1", None, None).unwrap();
-server.connect_player(user).unwrap();
+let mut client = client::Client::new("127.0.0.1", None, None).unwrap();
+client.connect_user(user).unwrap();
 
 loop {
-    let event = server.read_event().unwrap();
+    let event = client.read_event().unwrap();
     // ...
 }
 ```
 */
-
-pub mod connection;
-use connection::EncryptedConnection;
+use crate::crypto;
+use crate::errors::*;
+use crate::event::*;
 
 use std::sync::Mutex;
 use std::time;
 
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
+use log::{info, warn};
 
-use crate::errors::*;
-use crate::event::{self, Event};
-use crate::{crypto, event::ServerVersion};
-use crate::{event::ProtocolVersion, mojang::User};
+pub mod connection;
+pub mod mojang;
 
-/// High level wrapper around a Minecraft server connection.
-pub struct Server {
+/// High level wrapper around a connection to a Minecraft server.
+pub struct Client {
     // Mutex here is for interior mutability ->
     // allows server methods such as `read_event` to be called without passing a mutable reference to self.
-    connection: Mutex<EncryptedConnection>,
+    connection: Mutex<connection::EncryptedConnection>,
     connected_address: String,
-    connected_user: Option<User>,
+    connected_user: Option<mojang::User>,
 }
 
-impl Server {
+impl Client {
     /// Constructs a new server object.
     /// The connection will use port `25565` if the `port` argument is `None`.
     /// The protocol version will be auto-detected if the `protocol` argument is `None`.
@@ -86,12 +82,12 @@ impl Server {
         };
 
         Ok(Self {
-            connection: Mutex::new(EncryptedConnection::new(
+            connection: Mutex::new(connection::EncryptedConnection::new(
                 address,
                 port,
                 match protocol {
                     Some(p) => p,
-                    _ => Self::get_version(&address, Some(port))?.protocol,
+                    _ => Self::get_server_version(&address, Some(port))?.protocol,
                 },
             )?),
             connected_address: format!("{}:{}", address, port),
@@ -101,58 +97,62 @@ impl Server {
 
     /// Get the address with which the server was connected to,
     #[inline]
-    pub fn get_address(&self) -> &String {
+    pub fn get_server_address(&self) -> &String {
         &self.connected_address
     }
 
     /// Get the ip address and port of the server.
     #[inline]
-    pub fn get_connection_address(&self) -> connection::SocketAddr {
+    pub fn get_server_connection_address(&self) -> connection::SocketAddr {
         self.connection.lock().unwrap().get_address()
     }
 
     /// Get the currently connected user.
     #[inline]
-    pub fn get_connected_user(&self) -> &Option<User> {
+    pub fn get_connected_user(&self) -> &Option<mojang::User> {
         &self.connected_user
     }
 
     /// Read incoming server events.
     #[inline]
-    pub fn read_event(&self) -> Result<Event, ConnectionError<EncryptedConnection>> {
+    pub fn read_event(&self) -> Result<Event, ConnectionError<connection::EncryptedConnection>> {
         Ok(self.connection.lock()?.read_event()?)
     }
 
     /// Send an event to the server.
     #[inline]
-    pub fn send_event(&self, _event: Event) -> Result<(), ConnectionError<EncryptedConnection>> {
+    pub fn send_event(
+        &self,
+        _event: Event,
+    ) -> Result<(), ConnectionError<connection::EncryptedConnection>> {
         self.connection.lock()?.send_event(_event)?;
         Ok(())
     }
 
     /// Attempt to get the protocol version of a server.
-    pub fn get_version(address: &str, port: Option<u16>) -> Result<ServerVersion, Error> {
+    pub fn get_server_version(address: &str, port: Option<u16>) -> Result<ServerVersion, Error> {
         let port = match port {
             Some(p) => p,
             _ => 25565,
         };
 
-        let mut connection = EncryptedConnection::new(address, port, event::ProtocolVersion::V47)?;
+        let mut connection =
+            connection::EncryptedConnection::new(address, port, ProtocolVersion::V47)?;
 
-        connection.set_state(&event::EventState::Handshake);
+        connection.set_state(&EventState::Handshake);
 
         connection
-            .send_event(Event::Handshake(event::Handshake {
+            .send_event(Event::Handshake(Handshake {
                 server_address: address.to_owned(),
                 server_port: port,
-                next_state: event::EventState::Status,
+                next_state: EventState::Status,
             }))
             .unwrap();
 
-        connection.set_state(&event::EventState::Status);
+        connection.set_state(&EventState::Status);
 
         connection
-            .send_event(Event::StatusRequest(event::StatusRequest {}))
+            .send_event(Event::StatusRequest(StatusRequest {}))
             .unwrap();
 
         Ok(match connection.read_event()? {
@@ -166,10 +166,10 @@ impl Server {
     }
 
     /// Connect a user to the server. Only one user can be connected at a time.
-    pub fn connect_player(
+    pub fn connect_user(
         &mut self,
-        user: User,
-    ) -> Result<(), ConnectionError<EncryptedConnection>> {
+        user: mojang::User,
+    ) -> Result<(), ConnectionError<connection::EncryptedConnection>> {
         let start = time::Instant::now();
 
         if let Some(p) = &self.connected_user {
@@ -178,29 +178,27 @@ impl Server {
             })));
         }
 
-        let (address, port) = match self.get_connection_address() {
+        let (address, port) = match self.get_server_connection_address() {
             connection::SocketAddr::V4(p) => (format!("{}", p.ip()), p.port()),
             connection::SocketAddr::V6(p) => (format!("{}", p.ip()), p.port()),
         };
 
-        self.connection
-            .lock()?
-            .set_state(&event::EventState::Handshake);
+        self.connection.lock()?.set_state(&EventState::Handshake);
 
         self.connection
             .lock()?
-            .send_event(Event::Handshake(event::Handshake {
+            .send_event(Event::Handshake(Handshake {
                 server_address: address,
                 server_port: port,
-                next_state: event::EventState::Login,
+                next_state: EventState::Login,
             }))
             .unwrap();
 
-        self.connection.lock()?.set_state(&event::EventState::Login);
+        self.connection.lock()?.set_state(&EventState::Login);
 
         self.connection
             .lock()?
-            .send_event(Event::LoginStart(event::LoginStart {
+            .send_event(Event::LoginStart(LoginStart {
                 name: user.selected_profile.name.clone(),
             }))
             .unwrap();
@@ -211,7 +209,7 @@ impl Server {
                 warn!("Server running in offline mode. Logging in.");
                 info!("Login success at: {} ms!", start.elapsed().as_millis());
                 self.connected_user = Some(user);
-                self.connection.lock()?.set_state(&event::EventState::Play);
+                self.connection.lock()?.set_state(&EventState::Play);
                 return Ok(());
             }
             _ => {
@@ -221,7 +219,7 @@ impl Server {
             }
         };
 
-        let mut encryption_response = event::EncryptionResponse {
+        let mut encryption_response = EncryptionResponse {
             shared_secret: vec![],
             verify_token: vec![],
         };
@@ -232,6 +230,7 @@ impl Server {
             crypto::rand_bytes(&mut shared)?;
 
             let pkey = crypto::Rsa::public_key_from_der(&encryption_request.public_key)?;
+
             encryption_response.shared_secret = crypto::public_encrypt(&pkey, &shared)?;
             encryption_response.verify_token =
                 crypto::public_encrypt(&pkey, &encryption_request.verify_token)?;
@@ -268,7 +267,7 @@ impl Server {
             };
         }
 
-        self.connection.lock()?.set_state(&event::EventState::Play);
+        self.connection.lock()?.set_state(&EventState::Play);
 
         Ok(())
     }

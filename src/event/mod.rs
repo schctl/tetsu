@@ -2,38 +2,41 @@
 Server-client communication types.
 
 # Examples
+
+## Using an `EventDispatcher` to send events.
 ```
 use std::io::Cursor;
 use tetsu::event::*;
 
 let mut connection = Cursor::new(Vec::new());
+let dispatcher: dispatcher::EventDispatcher<Cursor<Vec<u8>>, Cursor<Vec<u8>>> =
+    dispatcher::EventDispatcher::new(&ProtocolVersion::V47);
 
 // ...
 
-let write_handshake = Event::Handshake(Handshake {
+let handshake = Event::Handshake(Handshake {
     server_address: "127.0.0.1".to_owned(),
     server_port: 25565,
     next_state: EventState::Login,
-})
-.write_to(
+});
+
+dispatcher.write_event(
     &mut connection,
+     handshake,
     &EventState::Handshake,
     &EventDirection::ServerBound,
-    &ProtocolVersion::V47,
     0,
-)
-.unwrap();
+);
 ```
 */
 
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
-
 use crate::errors::*;
-use crate::packet::*;
 use crate::versions;
 
-mod types;
+use uuid::Uuid;
+
+pub mod dispatcher;
+pub mod types;
 pub use types::*;
 
 /**
@@ -45,14 +48,14 @@ use std::io::Cursor;
 use tetsu::event::*;
 
 let mut buf = Cursor::new(Vec::new());
+let dispatcher: dispatcher::EventDispatcher<Cursor<Vec<u8>>, Cursor<Vec<u8>>> = dispatcher::EventDispatcher::new(&ProtocolVersion::V47);
 
 // ...
 
-let event = Event::read_from(
+let event = dispatcher.read_event(
     &mut buf,
     &EventState::Status,
     &EventDirection::ClientBound,
-    &ProtocolVersion::V47,
     0,
 ).unwrap();
 
@@ -66,72 +69,49 @@ match event {
 #[non_exhaustive]
 #[derive(Debug, PartialEq, Clone)]
 pub enum Event {
-    Ping(Ping),
-    Pong(Pong),
-    StatusRequest(StatusRequest),
-    StatusResponse(StatusResponse),
-
     Handshake(Handshake),
 
-    LoginStart(LoginStart),
+    // Client bound ----------------------------------
+    Pong(Pong),
+    StatusResponse(StatusResponse),
+
+    // Server bound ----------------------------------
+    Ping(Ping),
+    StatusRequest(StatusRequest),
+
+    // Client bound ----------------------------------
     Disconnect(Disconnect),
     EncryptionRequest(EncryptionRequest),
-    EncryptionResponse(EncryptionResponse),
     LoginSuccess(LoginSuccess),
     SetCompression(SetCompression),
 
+    // Server bound ----------------------------------
+    LoginStart(LoginStart),
+    EncryptionResponse(EncryptionResponse),
+
+    // Client bound ----------------------------------
     KeepAlive(KeepAlive),
     JoinGame(JoinGame),
+    TimeUpdate(TimeUpdate),
     SpawnPosition(SpawnPosition),
+    PlayerPositionAndLook(PlayerPositionAndLook),
     HeldItemChange(HeldItemChange),
+    SlotUpdate(SlotUpdate),
+    WindowItemsUpdate(WindowItemsUpdate),
     Statistics(Statistics),
+    PlayerInfoUpdate(PlayerInfoUpdate),
     PlayerAbility(PlayerAbility),
     PluginMessage(PluginMessage),
     ServerDifficultyUpdate(ServerDifficultyUpdate),
+    WorldBorder(WorldBorder),
+    ChangeGameState(ChangeGameState),
+
+    // Server bound ----------------------------------
+    KeepAliveResponse(KeepAliveResponse),
 }
 
-impl Event {
-    /// Write an event to a buffer.
-    #[inline]
-    pub fn write_to<T: std::io::Write>(
-        self,
-        buf: &mut T,
-        state: &EventState,
-        direction: &EventDirection,
-        protocol: &ProtocolVersion,
-        compression_threshold: i32,
-    ) -> TetsuResult<()> {
-        match protocol {
-            ProtocolVersion::V47 => {
-                versions::v47::write_event(buf, self, state, direction, compression_threshold)
-            }
-            ProtocolVersion::V754 => {
-                versions::v754::write_event(buf, self, state, direction, compression_threshold)
-            }
-        }
-    }
-
-    /// Read an event from a buffer.
-    #[inline]
-    pub fn read_from<T: std::io::Read>(
-        buf: &mut T,
-        state: &EventState,
-        direction: &EventDirection,
-        protocol: &ProtocolVersion,
-        compression_threshold: i32,
-    ) -> TetsuResult<Self> {
-        match protocol {
-            ProtocolVersion::V47 => {
-                versions::v47::read_event(buf, state, direction, compression_threshold)
-            }
-            ProtocolVersion::V754 => {
-                versions::v754::read_event(buf, state, direction, compression_threshold)
-            }
-        }
-    }
-}
-
-// All possible server events -----------
+unsafe impl Send for Event {}
+unsafe impl Sync for Event {}
 
 // Status ----------
 
@@ -153,7 +133,7 @@ pub struct Pong {
 #[derive(Debug, PartialEq, Clone)]
 pub struct StatusRequest {}
 
-/// Server information response to `StatusRequest`.
+/// Server information response to [`StatusRequest`].
 #[derive(Debug, PartialEq, Clone)]
 pub struct StatusResponse {
     /// Server information.
@@ -237,17 +217,39 @@ pub struct KeepAlive {
     pub id: i64,
 }
 
+/// Sent in response to [`KeepAlive`].
+#[derive(Debug, PartialEq, Clone)]
+pub struct KeepAliveResponse {
+    /// Payload.
+    pub id: i64,
+}
+
 /// Sent when a player joins a server.
 #[derive(Debug, PartialEq, Clone)]
 pub struct JoinGame {
     pub id: i32,
-    pub gamemode: Gamemode,
     pub is_hardcore: bool,
-    pub dimension: Dimension,
-    pub difficulty: Difficulty,
+    pub gamemode: Gamemode,
+    pub worlds: Option<Vec<String>>,
+    pub dimension: Option<Dimension>,
+    pub dimension_registry: Option<nbt::Blob>,
+    pub dimension_codec: Option<nbt::Blob>,
+    pub world_name: Option<String>,
+    pub difficulty: Option<Difficulty>,
+    pub hashed_seed: Option<i64>,
     pub max_players: u32,
-    pub world_type: String,
+    pub level_type: Option<String>,
+    pub view_distance: Option<i32>,
     pub reduced_debug: bool,
+    pub enable_respawn: Option<bool>,
+    pub is_debug: Option<bool>,
+    pub is_flat: Option<bool>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct TimeUpdate {
+    pub world_age: i64,
+    pub time_of_day: i64,
 }
 
 /// Spawn position of a player.
@@ -264,6 +266,21 @@ pub struct HeldItemChange {
     pub slot: i8,
 }
 
+/// Update a single window slot.
+#[derive(Debug, PartialEq, Clone)]
+pub struct SlotUpdate {
+    pub window_id: i8,
+    pub slot: i16,
+    pub data: Slot
+}
+
+/// Update player's window slots.
+#[derive(Debug, PartialEq, Clone)]
+pub struct WindowItemsUpdate {
+    pub window_id: u8,
+    pub slots: Vec<Slot>,
+}
+
 /// A single stat value.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Statistic {
@@ -275,6 +292,12 @@ pub struct Statistic {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Statistics {
     pub values: Vec<Statistic>,
+}
+
+/// Sent to update the player list on a client.
+#[derive(Debug, PartialEq, Clone)]
+pub struct PlayerInfoUpdate {
+    pub players: Vec<PlayerListInfo>,
 }
 
 /// Sent to update player abilities.
@@ -305,4 +328,74 @@ pub struct PluginMessage {
 pub struct ServerDifficultyUpdate {
     pub difficulty: Difficulty,
     pub difficulty_locked: bool,
+}
+
+/// Sent to update the world's border.
+#[derive(Debug, PartialEq, Clone)]
+pub enum WorldBorder {
+    SetSize {
+        diameter: f64,
+    },
+    LerpSize {
+        old_diameter: f64,
+        new_diameter: f64,
+        speed: i64,
+    },
+    SetCenter {
+        x: f64,
+        y: f64,
+    },
+    Initialize {
+        x: f64,
+        y: f64,
+        old_diameter: f64,
+        new_diameter: f64,
+        speed: i64,
+        portal_teleport_boundary: i32,
+        warning_blocks: i32,
+        warning_time: i32,
+    },
+    SetWarnTime {
+        warning_time: i32,
+    },
+    SetWarnBlocks {
+        warning_blocks: i32,
+    },
+}
+
+/// Win game state.
+#[derive(Debug, PartialEq, Clone)]
+pub enum AfterGameWin {
+    Respawn,
+    CreditsAndRespawn,
+}
+
+/// Demo message
+#[derive(Debug, PartialEq, Clone)]
+pub enum DemoEventAction {
+    Show,
+    ShowMovementControls,
+    ShowJumpControl,
+    ShowInventoryControl,
+    Over,
+}
+
+/// Sent to change any game state
+#[derive(Debug, PartialEq, Clone)]
+pub enum ChangeGameState {
+    NoRespawnBlock,
+    EndRaining,
+    BeginRaining,
+    GamemodeUpdate(Gamemode),
+    WinGame(AfterGameWin),
+    DemoEvent(DemoEventAction),
+    ArrowHitPlayer,
+    RainLevel(f32),
+    ThunderLevel(f32),
+    PufferfishSting,
+    ElderGuardianAppear,
+    EnableRespawn(bool),
+    FadeValue(f32),
+    FadeTime(f32),
+    MobAppear,
 }

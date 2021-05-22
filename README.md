@@ -1,25 +1,43 @@
-# Tetsu
+<h1 align="center">鉄 Tetsu</h1>
+<p align="center">High level interface to Minecraft's server protocols.</p>
+<p align="center">
+    <a href="https://docs.rs/tetsu"><img alt="docs.rs" height=26 src="https://img.shields.io/crates/v/tetsu?style=for-the-badge&color=9a7155&logo=Rust&label=Docs" /></a>
+    <a href="LICENSE"><img alt="License" height=26 src="https://img.shields.io/crates/l/tetsu?style=for-the-badge&color=69868e&logo=Mitsubishi" /></a>
+    <a href="https://github.com/schctl/tetsu/actions/workflows/test.yml"><img alt="Workflow Status" height=26 src="https://img.shields.io/github/workflow/status/schctl/tetsu/Test?style=for-the-badge&logo=Github" /></a>
+</p>
 
-[<img alt="docs.rs" height=26 src="https://img.shields.io/docsrs/tetsu?style=for-the-badge&color=66c192&logo=Rust" />](https://docs.rs/tetsu)
-[<img alt="License" height=26 src="https://img.shields.io/crates/l/tetsu?style=for-the-badge&color=66a7c1" />](LICENSE)
-[<img alt="Workflow Status" height=26 src="https://img.shields.io/github/workflow/status/schctl/tetsu/Test?style=for-the-badge&logo=Github" />](https://github.com/schctl/tetsu/actions/workflows/test.yml)
+`Tetsu` is a highly experimental crate that tries to make Minecraft's [server protocols](https://wiki.vg/Protocol) easier to use. I'm currently trying to make this work with server versions `1.8.*` and `1.16.*`. The next goal is to implement all `Play` packets for version 47 of the protocol before `v0.1.0`.
 
-`Tetsu` is a highly experimental version agnostic implementation of Minecraft's [server protocols](https://wiki.vg/Protocol) written in Rust. I'm currently trying to make this work with server versions `1.8.*` and `1.16.*`.
+## Building on windows
 
-## Plans
+`Tetsu` relies on [OpenSSL](https://www.openssl.org/) for some cryptographic functions. So, to be able to build this on windows, OpenSSL must be installed first. See installation instructions [here](https://docs.rs/crate/openssl-sys/0.9.19#Windows-MSVC).
 
-The next few immediate goals for `Tetsu` are:
+## Examples
 
-- Implementing all `Play` packets for version 47 of the protocol.
-- Minimizing the dependency list.
-- A more robust way to implement packets.
+### Logging into a server
 
-<p><sup>
-    <b>
-        Note:
-    </b>
-    Some of the packet serialization code was referenced from
-    <a href="https://github.com/iceiix/stevenarella">
-        Stevenarella
-    </a>.
-</sup></p>
+```rust
+use std::env;
+
+use tetsu::errors;
+use tetsu::mojang;
+use tetsu::client;
+
+fn main() {
+    let user = mojang::User::authenticate(
+        env::var("MOJANG_USER").unwrap(),
+        env::var("MOJANG_USER_PWD").unwrap(),
+    );
+
+    let mut client = client::Client::new("127.0.0.1", None, None).unwrap();
+
+    client.connect_user(user).unwrap();
+
+    loop {
+        match client.read_event() {
+            Ok(e) => println!("{:?}", e),
+            _ => {}
+        }
+    }
+}
+```

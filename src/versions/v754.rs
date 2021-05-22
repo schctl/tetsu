@@ -1,115 +1,177 @@
-//! Event implementation for v754 of the protocol.
-//! V754 covers server versions 1.16.4-1.16.5.
-//! This implementation is not given priority to as
-//! v47 will be implemented first.
+use std::convert::{TryFrom, TryInto};
 
+use super::common::*;
 use crate::errors::*;
 use crate::event::*;
-use crate::packet::*;
 
-pub use crate::versions::v47::{
-    EncryptionRequestVarIntPacket, EncryptionResponseVarIntPacket, LoginStartPacket,
-    SetCompressionPacket, StatusPingPacket, StatusPongPacket, StatusRequestPacket,
-    StatusResponsePacket,
-};
+use super::v47::{V47Readable, V47Writable};
 
-protocol_impl! {
+pub trait V754Readable<F>: Sized {
+    fn v754_read<T: std::io::Read>(buf: &mut T) -> TetsuResult<F>;
+}
 
-    inherit {
-        StatusPingPacket: Ping;
-        StatusPongPacket: Pong;
-        StatusRequestPacket: StatusRequest;
-        StatusResponsePacket: StatusResponse;
+pub trait V754Writable: Sized {
+    fn v754_write<T: std::io::Write>(&self, buf: &mut T) -> TetsuResult<()>;
+}
 
-        LoginStartPacket: LoginStart;
-        EncryptionRequestVarIntPacket: EncryptionRequest;
-        EncryptionResponseVarIntPacket: EncryptionResponse;
-        SetCompressionPacket: SetCompression;
-    }
+auto_read_and_write_impl! {
+    (read: V754Readable<Event>, v754_read;
+    write: V754Writable, v754_write) => {
+        // Handshake =====================================
+        // Server bound ----------------------------------
 
-    // Handshake ---------------
+        // Status ========================================
+        // Client bound ----------------------------------
+        // Server bound ----------------------------------
 
-    (0x00) ServerBound Handshake HandshakePacket: Handshake {
-        from_event {
-            | origin: Handshake | -> TetsuResult<HandshakePacket> {
-                Ok(HandshakePacket {
-                    protocol_version: VarInt(754),
-                    server_address: origin.server_address,
-                    server_port: origin.server_port,
-                    next_state: match origin.next_state {
-                        EventState::Status => VarInt(1),
-                        EventState::Login => VarInt(2),
-                        _ => return Err(Error::from(InvalidValue { expected: "Status or Login".to_owned() }))
-                    }
-                })
-            }
+        // Login =========================================
+        // Client bound ----------------------------------
+        {
+            Disconnect,
+            reason: Chat,
         }
-        to_event {
-            | origin: HandshakePacket | -> TetsuResult<Event> {
-                Ok(Event::Handshake(Handshake {
-                    server_address: origin.server_address,
-                    server_port: origin.server_port,
-                    next_state: match origin.next_state.0 {
-                        1 => EventState::Status,
-                        2 => EventState::Login,
-                        _ => return Err(Error::from(InvalidValue { expected: "1 or 2".to_owned() }))
-                    }
-                }))
-            }
-        }
-        fields {
-            protocol_version: VarInt,
-            server_address: String,
-            server_port: UnsignedShort,
-            next_state: VarInt,
-        }
-    }
-
-    // Login -------------------
-
-    (0x02) ClientBound Login LoginSuccessPacket: LoginSuccess {
-        from_event {
-            | origin: LoginSuccess | -> TetsuResult<LoginSuccessPacket> {
-                Ok(LoginSuccessPacket {
-                    uuid: origin.uuid,
-                    name: origin.name
-                })
-            }
-        }
-        to_event {
-            | origin: LoginSuccessPacket | -> TetsuResult<Event> {
-                Ok(Event::LoginSuccess(LoginSuccess {
-                    uuid: origin.uuid,
-                    name: origin.name,
-                }))
-            }
-        }
-        fields {
+        {
+            LoginSuccess,
             uuid: Uuid,
             name: String,
         }
-    }
+        // Server bound ----------------------------------
 
-    (0x00) ClientBound Login DisconnectPacket: Disconnect {
-        from_event {
-            | origin: Disconnect | -> TetsuResult<DisconnectPacket> {
-                Ok(DisconnectPacket {
-                    reason: origin.reason
-                })
-            }
+        // Play ==========================================
+        // Client bound ----------------------------------
+        {
+            KeepAlive,
+            id: Long,
         }
-        to_event {
-            | origin: DisconnectPacket | -> TetsuResult<Event> {
-                Ok(Event::Disconnect(Disconnect {
-                    reason: origin.reason
-                }))
-            }
-        }
-        fields {
-            reason: Chat,
+        {
+            ServerDifficultyUpdate,
+            difficulty: Difficulty,
+            difficulty_locked: bool,
         }
     }
+}
 
-    // Play --------------------
+new_protocol_impl! {
+    (read: V47Readable, v47_read;
+    write: V47Writable, v47_write) => {
 
+        // Status ========================================
+        // Client bound ----------------------------------
+        (0x00, ClientBound, Status) => StatusResponse,
+        (0x01, ClientBound, Status) => Pong,
+        // Server bound ----------------------------------
+        (0x00, ServerBound, Status) => StatusRequest,
+        (0x01, ServerBound, Status) => Ping,
+
+        // Login =========================================
+        // Client bound ----------------------------------
+        (0x01, ClientBound, Login) => EncryptionRequest,
+        (0x03, ClientBound, Login) => SetCompression,
+        // Server bound ----------------------------------
+        (0x00, ServerBound, Login) => LoginStart,
+        (0x01, ServerBound, Login) => EncryptionResponse,
+
+        // Play ==========================================
+        // Client bound ----------------------------------
+        (0x15, ClientBound, Play) => SlotUpdate,
+    }
+
+    (read: V754Readable, v754_read;
+    write: V754Writable, v754_write) => {
+        // Handshake =====================================
+        // Server bound ----------------------------------
+        (0x00, ServerBound, Handshake) => Handshake,
+
+        // Login =========================================
+        // Client bound ----------------------------------
+        (0x00, ClientBound, Login) => Disconnect,
+        (0x02, ClientBound, Login) => LoginSuccess,
+
+        // Play ==========================================
+        // Client bound ----------------------------------
+        (0x0D, ClientBound, Play) => ServerDifficultyUpdate,
+        (0x1F, ClientBound, Play) => KeepAlive,
+        (0x24, ClientBound, Play) => JoinGame,
+    }
+}
+
+// =========== Manual Implementations ============
+
+// Handshake =====================================
+// Server bound ----------------------------------
+
+// probably should also add the protocol version field for servers.
+
+impl V754Readable<Event> for Handshake {
+    fn v754_read<T: std::io::Read>(buf: &mut T) -> TetsuResult<Event> {
+        let _ = VarInt::read_from(buf)?;
+        Ok(Event::Handshake(Handshake {
+            server_address: String::read_from(buf)?,
+            server_port: UnsignedShort::read_from(buf)?,
+            next_state: EventState::read_from(buf)?,
+        }))
+    }
+}
+
+impl V754Writable for Handshake {
+    fn v754_write<T: std::io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
+        VarInt(754).write_to(buf)?;
+        self.server_address.write_to(buf)?;
+        self.server_port.write_to(buf)?;
+        self.next_state.write_to(buf)
+    }
+}
+
+// Play ==========================================
+// Client bound ----------------------------------
+
+// ----------------------------------
+
+impl V754Readable<Event> for JoinGame {
+    fn v754_read<T: std::io::Read>(buf: &mut T) -> TetsuResult<Event> {
+        let id = Int::read_from(buf)?;
+        let is_hardcore = Bool::read_from(buf)?;
+        let gamemode = UnsignedByte::read_from(buf)?;
+        let _ = Byte::read_from(buf)?;
+        let worlds: GenericArray<VarInt, String> = GenericArray::read_from(buf)?;
+
+        Ok(Event::JoinGame(Self {
+            id,
+            is_hardcore,
+            gamemode: Gamemode::try_from(gamemode as i32)?,
+            worlds: Some(worlds.into()),
+            dimension_registry: Some(NbtBlob::read_from(buf)?),
+            dimension_codec: Some(NbtBlob::read_from(buf)?),
+            world_name: Some(String::read_from(buf)?),
+            hashed_seed: Some(Long::read_from(buf)?),
+            max_players: UnsignedByte::read_from(buf)? as u32,
+            view_distance: Some(VarInt::read_from(buf)?.0),
+            reduced_debug: Bool::read_from(buf)?,
+            enable_respawn: Some(Bool::read_from(buf)?),
+            is_debug: Some(Bool::read_from(buf)?),
+            is_flat: Some(Bool::read_from(buf)?),
+            ..Default::default()
+        }))
+    }
+}
+
+impl V754Writable for JoinGame {
+    fn v754_write<T: std::io::Write>(&self, buf: &mut T) -> TetsuResult<()> {
+        self.id.write_to(buf)?;
+        self.is_hardcore.write_to(buf)?;
+        let gamemode: i32 = self.gamemode.clone().try_into()?;
+        (gamemode as u8).write_to(buf)?;
+        (-1i8).write_to(buf)?; // TODO: move
+        let worlds: GenericArray<VarInt, String> = GenericArray::from(self.worlds.clone().unwrap());
+        worlds.write_to(buf)?;
+        self.dimension_registry.clone().unwrap().write_to(buf)?;
+        self.dimension_codec.clone().unwrap().write_to(buf)?;
+        self.world_name.clone().unwrap().write_to(buf)?;
+        self.max_players.write_to(buf)?;
+        self.view_distance.unwrap().write_to(buf)?;
+        self.reduced_debug.write_to(buf)?;
+        self.enable_respawn.unwrap().write_to(buf)?;
+        self.is_debug.unwrap().write_to(buf)?;
+        self.is_flat.unwrap().write_to(buf)
+    }
 }

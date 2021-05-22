@@ -3,13 +3,16 @@ name = "tetsu"
 license = "MIT"
 readme = "README.md"
 version = "0.0.2"
-description = "A highly experimental version agnostic implementation of Minecraft's server protocols."
+description = "A crate that tries to make Minecraft's server protocols easier to use."
 repository = "https://github.com/schctl/tetsu/"
 authors = ["Sachin Cherian <sachinctl@protonmail.com>"]
 edition = "2018"
+exclude = [
+    "res/*",
+]
 
 [profile.release]
-lto = "thin"
+lto = true
 codegen-units = 1
 
 [dev-dependencies]
@@ -17,20 +20,20 @@ env_logger = "^0.8"
 
 [dependencies]
 # Crypto
-aes = "^0.7"
-cfb8 = "^0.7"
-openssl = "^0.10"
+aes = "0.7"
+cfb8 = "0.7"
+openssl = "0.10"
 
 # Misc
-log = "^0.4"
-ureq = "^2.1"
-flate2 = "^1.0"
+log = "0.4"
+ureq = "2.1"
+flate2 = "1.0"
 
 # Serialization
-byteorder = "^1.4"
-hematite-nbt = "^0.5"
-uuid = { version = "^0.8", default-features = false }
+byteorder = "1.4"
+hematite-nbt = "0.5"
+uuid = { version = "0.8", default-features = false }
 
+serde_repr = "0.1"
+serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-serde_repr = "^0.1"
-serde_json = "^1.0"
