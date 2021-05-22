@@ -8,7 +8,7 @@ use std::net::TcpStream;
 
 use openssl::rsa::Padding;
 
-pub use openssl::pkey::{Private, Public};
+pub use openssl::pkey::{Private as PrivateKey, Public as PublicKey};
 pub use openssl::rand::rand_bytes;
 pub use openssl::rsa::Rsa;
 pub use openssl::sha::Sha1;
@@ -18,7 +18,7 @@ use cfb8::cipher::{AsyncStreamCipher, NewCipher};
 use cfb8::Cfb8;
 
 /// Encrypt some data with an RSA public key.
-pub fn public_encrypt(key: &Rsa<Public>, data: &[u8]) -> TetsuResult<Vec<u8>> {
+pub fn public_encrypt(key: &Rsa<PublicKey>, data: &[u8]) -> TetsuResult<Vec<u8>> {
     // Not sure about this.
     let mut decrypted = vec![0; 512];
     let len = key.public_encrypt(&data, &mut decrypted, Padding::PKCS1)?;
@@ -26,20 +26,20 @@ pub fn public_encrypt(key: &Rsa<Public>, data: &[u8]) -> TetsuResult<Vec<u8>> {
 }
 
 /// Encrypt some data with an RSA private key.
-pub fn private_encrypt(key: &Rsa<Private>, data: &[u8]) -> TetsuResult<Vec<u8>> {
+pub fn private_encrypt(key: &Rsa<PrivateKey>, data: &[u8]) -> TetsuResult<Vec<u8>> {
     let mut decrypted = vec![0; 512];
     let len = key.private_decrypt(&data, &mut decrypted, Padding::PKCS1)?;
     Ok(decrypted[..len].to_vec())
 }
 
 /// Decrypt some data with an RSA private key.
-pub fn private_decrypt(key: &Rsa<Private>, data: &[u8]) -> TetsuResult<Vec<u8>> {
+pub fn private_decrypt(key: &Rsa<PrivateKey>, data: &[u8]) -> TetsuResult<Vec<u8>> {
     let mut decrypted = vec![0; 512];
     let len = key.private_encrypt(&data, &mut decrypted, Padding::PKCS1)?;
     Ok(decrypted[..len].to_vec())
 }
 
-/// Default Minecraft stream cipher. Uses AES/CFB8.
+/// Default protocol stream cipher. Uses AES/CFB8.
 pub struct DefaultStreamCipher {
     /// Internal CFB8 cipher.
     cipher: Cfb8<Aes128>,
@@ -69,13 +69,14 @@ impl DefaultStreamCipher {
 
 /// Return a string of hex characters of a [`Sha1`] hash.
 ///
-/// Based on Minecraft's implementation:
-/// From https://wiki.vg/Protocol_Encryption#Authentication:
+/// Based on Minecraft's [hexdigest implementation].
 /// > Note that the Sha1.hexdigest() method used by minecraft is non standard.
 /// > It doesn't match the digest method found in most programming languages
 /// > and libraries. It works by treating the sha1 output bytes as one large
 /// > integer in two's complement and then printing the integer in base 16,
 /// > placing a minus sign if the interpreted number is negative.
+///
+/// [hexdigest implementation]: https://wiki.vg/Protocol_Encryption#Authentication
 pub fn hexdigest(hasher: Sha1) -> String {
     let mut hash = hasher.finish();
 
@@ -143,15 +144,15 @@ impl EncryptedTcpStream {
         self.stream.peer_addr().unwrap()
     }
 
-    /// Enable or disable the Nagle algorithm.
+    /// Enable or disable `TCP_NODELAY`.
     #[inline]
     pub fn set_nodelay(&self, nodelay: bool) -> TetsuResult<()> {
         Ok(self.stream.set_nodelay(nodelay)?)
     }
 
-    /// Check if the Nagle algorithm is disabled.
+    /// Check if `TCP_NODELAY` is disabled.
     #[inline]
-    pub fn nodelay(&self) -> TetsuResult<bool> {
+    pub fn get_nodelay(&self) -> TetsuResult<bool> {
         Ok(self.stream.nodelay()?)
     }
 }

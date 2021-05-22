@@ -2,7 +2,7 @@
 <p align="center">High level interface to Minecraft's server protocols.</p>
 <p align="center">
     <a href="https://docs.rs/tetsu"><img alt="docs.rs" height=26 src="https://img.shields.io/crates/v/tetsu?style=for-the-badge&color=9a7155&logo=Rust&label=Docs" /></a>
-    <a href="LICENSE"><img alt="License" height=26 src="https://img.shields.io/crates/l/tetsu?style=for-the-badge&color=69868e" /></a>
+    <a href="LICENSE"><img alt="License" height=26 src="https://img.shields.io/crates/l/tetsu?style=for-the-badge&color=69868e&logo=Mitsubishi" /></a>
     <a href="https://github.com/schctl/tetsu/actions/workflows/test.yml"><img alt="Workflow Status" height=26 src="https://img.shields.io/github/workflow/status/schctl/tetsu/Test?style=for-the-badge&logo=Github" /></a>
 </p>
 
@@ -21,7 +21,7 @@ use std::env;
 
 use tetsu::errors;
 use tetsu::mojang;
-use tetsu::server;
+use tetsu::client;
 
 fn main() {
     let user = mojang::User::authenticate(
@@ -29,12 +29,12 @@ fn main() {
         env::var("MOJANG_USER_PWD").unwrap(),
     );
 
-    let mut server = server::Server::new("127.0.0.1", None, None).unwrap();
+    let mut client = client::Client::new("127.0.0.1", None, None).unwrap();
 
-    server.connect_user(user).unwrap();
+    client.connect_user(user).unwrap();
 
     loop {
-        match server.read_event() {
+        match client.read_event() {
             Ok(e) => println!("{:?}", e),
             _ => {}
         }

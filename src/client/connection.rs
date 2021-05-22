@@ -42,7 +42,13 @@ impl EncryptedConnection {
             "Switching connection state from {:?} -> {:?}",
             self.state, state
         );
-        debug!("TCP_NODELAY {}", self.stream.nodelay().unwrap());
+        debug!(
+            "TCP_NODELAY {}",
+            match self.stream.get_nodelay() {
+                Ok(b) => b,
+                _ => false,
+            }
+        );
         self.state = *state;
     }
 

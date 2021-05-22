@@ -2,12 +2,12 @@
 
 # Examples
 
-## Raw connection.
+## Raw connection
 ```no_run
-use tetsu::server;
+use tetsu::client;
 use tetsu::event;
 
-let mut connection = server::connection::EncryptedConnection::new(
+let mut connection = client::connection::EncryptedConnection::new(
     "127.0.0.1",
     25565,
     event::ProtocolVersion::V47
@@ -15,13 +15,13 @@ let mut connection = server::connection::EncryptedConnection::new(
 .unwrap();
 ```
 
-## Getting a server's version.
+## Getting a server's version name
 ```no_run
-use tetsu::server;
+use tetsu::client;
 
 println!(
     "Detected version of local server: {}",
-    server::Server::get_version("127.0.0.1", None)
+    client::Client::get_server_version("127.0.0.1", None)
         .unwrap()
         .name
 );
@@ -29,19 +29,18 @@ println!(
 
 ## Event loop
 ```no_run
-use tetsu::server;
-use tetsu::mojang;
+use tetsu::client;
 
-let user = mojang::User::authenticate(
+let user = client::mojang::User::authenticate(
     "user@email".to_owned(),
     "user_password".to_owned(),
 );
 
-let mut server = server::Server::new("127.0.0.1", None, None).unwrap();
-server.connect_user(user).unwrap();
+let mut client = client::Client::new("127.0.0.1", None, None).unwrap();
+client.connect_user(user).unwrap();
 
 loop {
-    let event = server.read_event().unwrap();
+    let event = client.read_event().unwrap();
     // ...
 }
 ```
@@ -49,25 +48,25 @@ loop {
 use crate::crypto;
 use crate::errors::*;
 use crate::event::*;
-use crate::mojang::User;
 
 use std::sync::Mutex;
 use std::time;
 
 use log::{info, warn};
 
+pub mod mojang;
 pub mod connection;
 
-/// High level wrapper around a Minecraft server connection.
-pub struct Server {
+/// High level wrapper around a connection to a Minecraft server.
+pub struct Client {
     // Mutex here is for interior mutability ->
     // allows server methods such as `read_event` to be called without passing a mutable reference to self.
     connection: Mutex<connection::EncryptedConnection>,
     connected_address: String,
-    connected_user: Option<User>,
+    connected_user: Option<mojang::User>,
 }
 
-impl Server {
+impl Client {
     /// Constructs a new server object.
     /// The connection will use port `25565` if the `port` argument is `None`.
     /// The protocol version will be auto-detected if the `protocol` argument is `None`.
@@ -88,7 +87,7 @@ impl Server {
                 port,
                 match protocol {
                     Some(p) => p,
-                    _ => Self::get_version(&address, Some(port))?.protocol,
+                    _ => Self::get_server_version(&address, Some(port))?.protocol,
                 },
             )?),
             connected_address: format!("{}:{}", address, port),
@@ -98,19 +97,19 @@ impl Server {
 
     /// Get the address with which the server was connected to,
     #[inline]
-    pub fn get_address(&self) -> &String {
+    pub fn get_server_address(&self) -> &String {
         &self.connected_address
     }
 
     /// Get the ip address and port of the server.
     #[inline]
-    pub fn get_connection_address(&self) -> connection::SocketAddr {
+    pub fn get_server_connection_address(&self) -> connection::SocketAddr {
         self.connection.lock().unwrap().get_address()
     }
 
     /// Get the currently connected user.
     #[inline]
-    pub fn get_connected_user(&self) -> &Option<User> {
+    pub fn get_connected_user(&self) -> &Option<mojang::User> {
         &self.connected_user
     }
 
@@ -131,7 +130,7 @@ impl Server {
     }
 
     /// Attempt to get the protocol version of a server.
-    pub fn get_version(address: &str, port: Option<u16>) -> Result<ServerVersion, Error> {
+    pub fn get_server_version(address: &str, port: Option<u16>) -> Result<ServerVersion, Error> {
         let port = match port {
             Some(p) => p,
             _ => 25565,
@@ -169,7 +168,7 @@ impl Server {
     /// Connect a user to the server. Only one user can be connected at a time.
     pub fn connect_user(
         &mut self,
-        user: User,
+        user: mojang::User,
     ) -> Result<(), ConnectionError<connection::EncryptedConnection>> {
         let start = time::Instant::now();
 
@@ -179,7 +178,7 @@ impl Server {
             })));
         }
 
-        let (address, port) = match self.get_connection_address() {
+        let (address, port) = match self.get_server_connection_address() {
             connection::SocketAddr::V4(p) => (format!("{}", p.ip()), p.port()),
             connection::SocketAddr::V6(p) => (format!("{}", p.ip()), p.port()),
         };

@@ -8,19 +8,18 @@ use std::thread;
 use std::time;
 
 use tetsu::errors;
-use tetsu::server;
-use tetsu::mojang;
+use tetsu::client;
 
-let user = mojang::User::authenticate(
+let user = client::mojang::User::authenticate(
     env::var("MOJANG_USER").unwrap(),
     env::var("MOJANG_USER_PWD").unwrap(),
 );
 
-let mut server = server::Server::new("127.0.0.1", None, None).unwrap();
-server.connect_user(user).unwrap();
+let mut client = client::Client::new("127.0.0.1", None, None).unwrap();
+client.connect_user(user).unwrap();
 
 loop {
-    match server.read_event() {
+    match client.read_event() {
         Ok(e) => println!("{:?}", e),
         Err(e) => match e {
             errors::ConnectionError::LockError(_) => {
@@ -39,12 +38,11 @@ loop {
 #![doc(html_favicon_url = "https://raw.githubusercontent.com/schctl/tetsu/master/res/favicon.ico")]
 #![doc(html_logo_url = "https://raw.githubusercontent.com/schctl/tetsu/master/res/logo.png")]
 
+pub mod client;
 pub mod crypto;
 pub mod errors;
 pub mod event;
-pub mod mojang;
 pub mod serialization;
-pub mod server;
 mod versions;
 
 pub use errors::TetsuResult;
